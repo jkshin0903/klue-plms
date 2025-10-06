@@ -17,9 +17,9 @@ klue/roberta-large 기반 KLUE-NER 파인튜닝 스크립트.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
+import argparse
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -44,12 +44,11 @@ from utils import (
     save_label_list,
     set_seed,
     setup_cuda,
+    read_json,
+    make_dataset_dict,
+    build_id_maps,
+    get_tokenizer,
 )
-
-
-def _read_json(path: str):
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def load_klue_ner(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
@@ -80,10 +79,10 @@ def load_klue_ner(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
             norm.append({"tokens": tokens, "tags": tags})
         return norm
 
-    train = normalize(_read_json(os.path.join(data_dir, "train.json")))
-    dev = normalize(_read_json(os.path.join(data_dir, "dev.json")))
+    train = normalize(read_json(os.path.join(data_dir, "train.json")))
+    dev = normalize(read_json(os.path.join(data_dir, "dev.json")))
     test_path = os.path.join(data_dir, "test.json")
-    test = normalize(_read_json(test_path)) if os.path.exists(test_path) else []
+    test = normalize(read_json(test_path)) if os.path.exists(test_path) else []
     return train, dev, test
 
 
@@ -161,8 +160,6 @@ def compute_metrics_builder(id_to_label):
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser(description="Fine-tune klue/roberta-large on KLUE-NER")
     parser.add_argument("--data_dir", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
@@ -193,18 +190,11 @@ def main():
     # Load and prepare data
     train, dev, test = load_klue_ner(args.data_dir)
     label_list = build_label_list((train, dev, test))
-    label_to_id = {l: i for i, l in enumerate(label_list)}
-    id_to_label = {i: l for l, i in label_to_id.items()}
+    label_to_id, id_to_label = build_id_maps(label_list)
 
-    ds = DatasetDict(
-        {
-            "train": Dataset.from_list(train),
-            "validation": Dataset.from_list(dev),
-            **({"test": Dataset.from_list(test)} if len(test) else {}),
-        }
-    )
+    ds = make_dataset_dict(train, dev, test)
 
-    tokenizer = AutoTokenizer.from_pretrained(get_model_name())
+    tokenizer = get_tokenizer()
     tokenized = ds.map(
         lambda ex: tokenize_and_align_labels(ex, tokenizer, label_to_id),
         batched=True,

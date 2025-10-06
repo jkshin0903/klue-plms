@@ -19,6 +19,8 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 import torch
+from datasets import Dataset, DatasetDict
+from transformers import AutoTokenizer
 
 
 def set_seed(seed: int = 42) -> None:
@@ -112,5 +114,37 @@ def setup_cuda(
 
     device = torch.device(f"cuda:{device_index}")
     torch.cuda.set_device(device)
+
+
+def read_json(path: str):
+    """JSON 파일을 로드하여 파이썬 객체로 반환합니다."""
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def make_dataset_dict(train: List[dict], dev: List[dict], test: Optional[List[dict]] = None) -> DatasetDict:
+    """list 샘플들을 HuggingFace DatasetDict로 변환합니다.
+
+    test가 비어있으면 포함하지 않습니다.
+    """
+    dd = {
+        "train": Dataset.from_list(train),
+        "validation": Dataset.from_list(dev),
+    }
+    if test is not None and len(test) > 0:
+        dd["test"] = Dataset.from_list(test)
+    return DatasetDict(dd)
+
+
+def build_id_maps(labels: List[str]):
+    """라벨 리스트로부터 label->id, id->label 매핑을 생성합니다."""
+    label_to_id = {l: i for i, l in enumerate(labels)}
+    id_to_label = {i: l for l, i in label_to_id.items()}
+    return label_to_id, id_to_label
+
+
+def get_tokenizer():
+    """기본 모델에 맞는 토크나이저를 생성하여 반환합니다."""
+    return AutoTokenizer.from_pretrained(get_model_name())
 
 

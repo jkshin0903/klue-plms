@@ -26,9 +26,9 @@ klue/roberta-large 기반 KLUE-RE(문장 관계 추출) 파인튜닝 스크립�
 
 from __future__ import annotations
 
-import json
 import logging
 import os
+import argparse
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -40,12 +40,17 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import configure_logging, get_model_name, save_label_list, set_seed, setup_cuda
-
-
-def _read_json(path: str):
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+from utils import (
+    configure_logging,
+    get_model_name,
+    save_label_list,
+    set_seed,
+    setup_cuda,
+    read_json,
+    make_dataset_dict,
+    build_id_maps,
+    get_tokenizer,
+)
 
 
 def load_klue_re(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
@@ -63,10 +68,10 @@ def load_klue_re(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
             )
         return out
 
-    train = pick(_read_json(os.path.join(data_dir, "train.json")))
-    dev = pick(_read_json(os.path.join(data_dir, "dev.json")))
+    train = pick(read_json(os.path.join(data_dir, "train.json")))
+    dev = pick(read_json(os.path.join(data_dir, "dev.json")))
     test_path = os.path.join(data_dir, "test.json")
-    test = pick(_read_json(test_path)) if os.path.exists(test_path) else []
+    test = pick(read_json(test_path)) if os.path.exists(test_path) else []
     return train, dev, test
 
 
@@ -127,8 +132,6 @@ def compute_metrics_builder(id_to_label):
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser(description="Fine-tune klue/roberta-large on KLUE-RE")
     parser.add_argument("--data_dir", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
@@ -159,18 +162,11 @@ def main():
     # 데이터 로드
     train, dev, test = load_klue_re(args.data_dir)
     label_list = build_label_list((train, dev, test))
-    label_to_id = {l: i for i, l in enumerate(label_list)}
-    id_to_label = {i: l for l, i in label_to_id.items()}
+    label_to_id, id_to_label = build_id_maps(label_list)
 
-    ds = DatasetDict(
-        {
-            "train": Dataset.from_list(train),
-            "validation": Dataset.from_list(dev),
-            **({"test": Dataset.from_list(test)} if len(test) else {}),
-        }
-    )
+    ds = make_dataset_dict(train, dev, test)
 
-    tokenizer = AutoTokenizer.from_pretrained(get_model_name())
+    tokenizer = get_tokenizer()
     tokenized = ds.map(
         lambda ex: preprocess_examples(ex, tokenizer, label_to_id),
         batched=True,
