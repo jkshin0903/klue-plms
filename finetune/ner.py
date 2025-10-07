@@ -33,17 +33,14 @@ import os
 import argparse
 from typing import Dict, List, Tuple
 
-import numpy as np
 try:
     from seqeval.metrics import classification_report, f1_score, precision_score, recall_score
     HAVE_SEQEVAL = True
 except Exception:
     HAVE_SEQEVAL = False
 
-from datasets import Dataset, DatasetDict
 from transformers import (
     AutoModelForTokenClassification,
-    AutoTokenizer,
     DataCollatorForTokenClassification,
     Trainer,
     TrainingArguments,

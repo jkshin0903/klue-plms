@@ -35,12 +35,9 @@ import os
 import argparse
 from typing import Dict, List, Tuple
 
-import numpy as np
-from datasets import Dataset, DatasetDict
 from sklearn.metrics import f1_score
 from transformers import (
     AutoModelForSequenceClassification,
-    AutoTokenizer,
     Trainer,
     TrainingArguments,
 )

@@ -24,14 +24,10 @@ from __future__ import annotations
 import logging
 import os
 import argparse
-from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from datasets import Dataset, DatasetDict
-from transformers import AutoModel, AutoTokenizer, Trainer, TrainingArguments, default_data_collator
+from transformers import Trainer, TrainingArguments, default_data_collator
 
 from utils import (
     configure_logging,
@@ -45,7 +41,7 @@ from utils import (
     read_dp_tsv,
     maybe_add_early_stopping,
 )
-from .models import Biaffine, RobertaBiaffineDependencyParser, Wrapper
+from .models import RobertaBiaffineDependencyParser, Wrapper
 
 
 def load_klue_dp(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
@@ -167,9 +163,6 @@ def tokenize_and_align_for_dp(examples, tokenizer, deprel_to_id):
     tokenized["deprels"] = batch_deprels
     tokenized["word_starts"] = batch_word_starts
     return tokenized
-
-
-from .models import Biaffine, RobertaBiaffineDependencyParser, Wrapper
 
 
 def collate_fn(features: List[Dict]):
