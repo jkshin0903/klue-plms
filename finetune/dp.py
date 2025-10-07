@@ -43,6 +43,7 @@ from utils import (
     get_tokenizer,
     read_dp_tsv,
 )
+from .models import Biaffine, RobertaBiaffineDependencyParser, Wrapper
 
 
 def load_klue_dp(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
@@ -166,131 +167,7 @@ def tokenize_and_align_for_dp(examples, tokenizer, deprel_to_id):
     return tokenized
 
 
-class Biaffine(nn.Module):
-    """biaffine 점수화 모듈.
-
-    두 입력 벡터 x(의존어), y(지배어)에 대해 bilinear + linear 합으로 점수를 계산합니다.
-    arc(head 선택)과 relation(라벨) 모두에 공통으로 사용됩니다.
-    """
-    def __init__(self, in1: int, in2: int, out: int):
-        super().__init__()
-        self.U = nn.Parameter(torch.zeros(out, in1, in2))
-        self.W1 = nn.Linear(in1, out, bias=False)
-        self.W2 = nn.Linear(in2, out, bias=True)
-        nn.init.xavier_uniform_(self.U)
-        nn.init.xavier_uniform_(self.W1.weight)
-        nn.init.xavier_uniform_(self.W2.weight)
-
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        bilinear = torch.einsum("blo,ohlm->blm", torch.einsum("blh,ohl->blo", x, self.U.sum(dim=2)), y.transpose(1, 2))
-        w1 = self.W1(x)
-        w2 = self.W2(y)
-        scores = bilinear.unsqueeze(-1) + w1.unsqueeze(2) + w2.unsqueeze(1)
-        return scores.squeeze(-1)
-
-
-class RobertaBiaffineDependencyParser(nn.Module):
-    """RoBERTa 인코더 + biaffine 기반 의존 구문 분석기.
-
-    - dep/head MLP로 인코더 은닉을 저차원 공간으로 투영
-    - arc_biaffine으로 head 선택 점수 계산, rel_biaffine으로 관계 라벨 점수 계산
-    - 학습 시 arc(전체 토큰에 대한 다중분류)와 관계(유효 head 쌍에 대한 다중분류) 손실을 합산
-    """
-    def __init__(self, encoder_name: str, num_deprel: int, hidden_mlp: int = 256):
-        super().__init__()
-        self.encoder = AutoModel.from_pretrained(encoder_name)
-        enc_dim = self.encoder.config.hidden_size
-        self.dep_mlp = nn.Sequential(nn.Linear(enc_dim, hidden_mlp), nn.ReLU())
-        self.head_mlp = nn.Sequential(nn.Linear(enc_dim, hidden_mlp), nn.ReLU())
-        self.arc_biaffine = Biaffine(hidden_mlp, hidden_mlp, out=1)
-        self.rel_biaffine = Biaffine(hidden_mlp, hidden_mlp, out=num_deprel)
-
-    def forward(self, input_ids, attention_mask, heads=None, deprels=None, word_starts=None):
-        enc_outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask, output_attentions=True)
-        enc = enc_outputs.last_hidden_state
-        attentions = enc_outputs.attentions  # Tuple[Layer] of [B,H,L,L]
-
-        # 첫 서브워드 위치만을 유효 토큰으로 간주하여 arc/rel 계산 범위를 제한합니다.
-        mask = word_starts if word_starts is not None else attention_mask
-        dep_h = self.dep_mlp(enc)
-        head_h = self.head_mlp(enc)
-        arc_scores = self.arc_biaffine(dep_h, head_h)
-        minus_inf = -1e4  # 마스킹을 위한 큰 음수
-        head_mask = (mask > 0).unsqueeze(1).expand(-1, arc_scores.size(1), -1)
-        arc_scores = arc_scores.masked_fill(~head_mask, minus_inf)
-
-        outputs = {"arc_scores": arc_scores, "attentions": attentions}
-
-        if heads is not None and deprels is not None:
-            B, L = input_ids.size()
-            device = input_ids.device
-            valid_positions = (mask > 0)  # 첫 서브워드 위치
-            arc_logit = arc_scores
-            target_heads = torch.full((B, L), fill_value=-100, dtype=torch.long, device=device)
-            # 단어 첫 서브워드 위치에 대해 gold head(워드피스 인덱스)를 채웁니다.
-            for b in range(B):
-                idxs = torch.nonzero(valid_positions[b], as_tuple=False).squeeze(-1).tolist()
-                if not idxs:
-                    continue
-                gold_heads = heads[b][: len(idxs)]
-                for j, dep_wp in enumerate(idxs):
-                    gh = gold_heads[j] if j < len(gold_heads) else -1
-                    if gh >= 0 and gh < L:
-                        target_heads[b, dep_wp] = gh
-                    else:
-                        target_heads[b, dep_wp] = -100
-
-            arc_loss = F.cross_entropy(arc_logit.transpose(1, 2), target_heads, ignore_index=-100)
-
-            rel_logits_list = []
-            rel_targets = []
-            # 관계 라벨은 (유효 dep, 유효 head) 쌍에 대해서만 계산합니다.
-            for b in range(B):
-                idxs = torch.nonzero(valid_positions[b], as_tuple=False).squeeze(-1).tolist()
-                if not idxs:
-                    continue
-                gold_heads = heads[b][: len(idxs)]
-                gold_rels = deprels[b][: len(idxs)]
-                for j, dep_wp in enumerate(idxs):
-                    gh = gold_heads[j] if j < len(gold_heads) else -1
-                    if gh < 0 or gh >= L:
-                        continue
-                    dep_vec = dep_h[b, dep_wp : dep_wp + 1]
-                    head_vec = head_h[b, gh : gh + 1]
-                    rel_scores = self.rel_biaffine(dep_vec, head_vec).squeeze(0).squeeze(0)
-                    rel_logits_list.append(rel_scores)
-                    rel_targets.append(gold_rels[j])
-
-            if rel_logits_list:
-                rel_logits = torch.stack(rel_logits_list, dim=0)
-                rel_targets_t = torch.tensor(rel_targets, dtype=torch.long, device=device)
-                rel_loss = F.cross_entropy(rel_logits, rel_targets_t)
-            else:
-                rel_loss = torch.tensor(0.0, device=device)
-
-            outputs["loss"] = arc_loss + rel_loss
-
-        return outputs
-
-
-class Wrapper(nn.Module):
-    """Trainer 호환 래퍼.
-
-    - loss, arc_scores만 노출하여 평가 시 head 정확도를 계산합니다.
-    """
-    def __init__(self, base: RobertaBiaffineDependencyParser):
-        super().__init__()
-        self.base = base
-
-    def forward(self, **batch):
-        out = self.base(
-            input_ids=batch["input_ids"],
-            attention_mask=batch["attention_mask"],
-            heads=batch.get("heads"),
-            deprels=batch.get("deprels"),
-            word_starts=batch.get("word_starts"),
-        )
-        return {"loss": out.get("loss", None), "arc_scores": out["arc_scores"]}
+from .models import Biaffine, RobertaBiaffineDependencyParser, Wrapper
 
 
 def collate_fn(features: List[Dict]):
