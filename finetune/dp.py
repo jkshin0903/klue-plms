@@ -42,6 +42,7 @@ from utils import (
     make_dataset_dict,
     get_tokenizer,
     read_dp_tsv,
+    maybe_add_early_stopping,
 )
 from .models import Biaffine, RobertaBiaffineDependencyParser, Wrapper
 
@@ -283,6 +284,7 @@ def main():
         tokenizer=tokenizer,
         data_collator=collate_fn,
         compute_metrics=compute_metrics_eval,
+        callbacks=maybe_add_early_stopping(patience=2),
     )
 
     trainer.train()

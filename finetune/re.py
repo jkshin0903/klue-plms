@@ -54,6 +54,7 @@ from utils import (
     make_dataset_dict,
     build_id_maps,
     get_tokenizer,
+    maybe_add_early_stopping,
 )
 
 
@@ -227,6 +228,7 @@ def main():
         eval_dataset=tokenized["validation"],
         tokenizer=tokenizer,
         compute_metrics=compute_metrics_builder(id_to_label),
+        callbacks=maybe_add_early_stopping(patience=2),
     )
 
     trainer.train()

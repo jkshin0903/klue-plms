@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from early_stopping import EarlyStoppingConfig  # type: ignore
 
 # Re-exported utilities split by feature modules
 from .util_seed import set_seed  # noqa: F401
@@ -16,9 +15,9 @@ from .util_tsv import (
     read_ner_tsv,
 )  # noqa: F401
 from .util_text import insert_entity_markers  # noqa: F401
+from .util_callbacks import maybe_add_early_stopping  # noqa: F401
 
 __all__ = [
-    "EarlyStoppingConfig",
     "set_seed",
     "configure_logging",
     "ensure_dir",
@@ -35,6 +34,7 @@ __all__ = [
     "read_dp_tsv",
     "read_ner_tsv",
     "insert_entity_markers",
+    "maybe_add_early_stopping",
 ]
 
 
