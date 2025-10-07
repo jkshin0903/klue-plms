@@ -5,14 +5,13 @@ KLUE-NER 추론 스크립트
 - 파인튜닝된 토큰 분류 모델을 로드하여 입력 토큰 시퀀스의 IOB 태그를 예측합니다.
 - 모델이 출력하는 레이어별 attention map을 함께 반환할 수 있습니다.
 
-입력/출력:
-- 입력: 공백 분리된 토큰 리스트(`--tokens`), 체크포인트 디렉터리(`--ckpt_dir`).
-- 출력 JSON:
-  {
-    "tokens": ["..."],
-    "labels": ["O"|"B-..."|"I-...", ...],
-    "attentions": [[[...]]]  # 레이어 x 헤드 x L x L
-  }
+입력(우선 포맷: TSV):
+- `--input_tsv path.tsv`로 헤더가 있는 TSV를 입력하면 행별로 tokens 열을 읽어 일괄 추론합니다.
+- 또는 `--tokens` 인자로 공백 분리된 토큰을 직접 입력할 수 있습니다.
+
+출력:
+- 단일 입력은 1개 JSON 객체, 다수 입력은 JSON 리스트로 출력합니다.
+  각 예측에는 입력 tokens, 예측 labels, attentions(옵션)가 포함됩니다.
 """
 
 from __future__ import annotations

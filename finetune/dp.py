@@ -1,12 +1,13 @@
 """
 klue/roberta-large 기반 KLUE-DP(의존 구문 분석) 파인튜닝 스크립트.
 
-데이터셋 구조(간단 요약):
-- train.json, dev.json, test.json 파일을 가정하며 각 파일은 샘플 리스트입니다.
-- 각 샘플은 다음 키를 포함합니다.
-  - "tokens": 공백 토큰 단위의 토큰 문자열 리스트
-  - "heads": 각 단어의 head 단어 인덱스(1-based), 0은 ROOT를 의미
-  - "deprels": 각 단어의 의존관계 라벨 문자열 리스트
+데이터셋 구조(우선 포맷: TSV):
+- train.tsv, dev.tsv, test.tsv 파일을 가정하며 각 파일은 헤더가 있는 TSV입니다.
+- 각 행은 다음 열을 포함합니다.
+  - tokens: 공백으로 구분된 토큰 문자열 리스트
+  - heads: 공백으로 구분된 정수 리스트(1-based head, 0은 ROOT)
+  - deprels: 공백으로 구분된 의존관계 라벨 문자열 리스트
+- TSV가 없을 경우 호환을 위해 train.json/dev.json/test.json을 fallback으로 지원합니다.
 
 전처리 개요:
 - 토큰 리스트를 워드피스 단위로 토크나이즈합니다.

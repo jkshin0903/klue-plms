@@ -5,13 +5,13 @@ KLUE-DP 추론 스크립트
 - 파인튜닝된 biaffine 의존 구문 분석기를 로드하여 입력 토큰에 대한 head 예측을 수행합니다.
 - 학습 시 모델에서 노출한 encoder attention map도 함께 반환할 수 있습니다.
 
-입력/출력:
-- 입력: 공백 분리된 토큰 리스트(`--tokens`), 체크포인트 디렉터리(`--ckpt_dir`).
-- 출력 JSON:
-  {
-    "heads": [int, ...],  # 각 토큰 위치의 예측 head 인덱스(워드피스 기준 argmax 결과)
-    "attentions": [[[...]] or null]  # 레이어별 attention(옵션)
-  }
+입력(우선 포맷: TSV):
+- `--input_tsv path.tsv`로 헤더가 있는 TSV를 입력하면 행별로 tokens 열을 읽어 일괄 추론합니다.
+- 또는 `--tokens` 인자로 공백 분리된 토큰을 직접 입력할 수 있습니다.
+
+출력:
+- 단일 입력은 1개 JSON 객체, 다수 입력은 JSON 리스트로 출력합니다.
+  각 예측에는 heads(워드피스 기준 argmax 결과)와 attentions(옵션)가 포함됩니다.
 """
 
 from __future__ import annotations
