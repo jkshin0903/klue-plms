@@ -41,6 +41,7 @@ from utils import (
     read_json,
     make_dataset_dict,
     get_tokenizer,
+    read_dp_tsv,
 )
 
 
@@ -63,10 +64,20 @@ def load_klue_dp(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
             )
         return out
 
-    train = pick(read_json(os.path.join(data_dir, "train.json")))
-    dev = pick(read_json(os.path.join(data_dir, "dev.json")))
-    test_path = os.path.join(data_dir, "test.json")
-    test = pick(read_json(test_path)) if os.path.exists(test_path) else []
+    # TSV 우선, 없으면 JSON 사용
+    train_tsv = read_dp_tsv(os.path.join(data_dir, "train.tsv"))
+    dev_tsv = read_dp_tsv(os.path.join(data_dir, "dev.tsv"))
+    test_tsv = read_dp_tsv(os.path.join(data_dir, "test.tsv"))
+
+    if train_tsv and dev_tsv:
+        train = train_tsv
+        dev = dev_tsv
+        test = test_tsv
+    else:
+        train = pick(read_json(os.path.join(data_dir, "train.json")))
+        dev = pick(read_json(os.path.join(data_dir, "dev.json")))
+        test_path = os.path.join(data_dir, "test.json")
+        test = pick(read_json(test_path)) if os.path.exists(test_path) else []
     return train, dev, test
 
 
@@ -262,6 +273,64 @@ class RobertaBiaffineDependencyParser(nn.Module):
         return outputs
 
 
+class Wrapper(nn.Module):
+    """Trainer 호환 래퍼.
+
+    - loss, arc_scores만 노출하여 평가 시 head 정확도를 계산합니다.
+    """
+    def __init__(self, base: RobertaBiaffineDependencyParser):
+        super().__init__()
+        self.base = base
+
+    def forward(self, **batch):
+        out = self.base(
+            input_ids=batch["input_ids"],
+            attention_mask=batch["attention_mask"],
+            heads=batch.get("heads"),
+            deprels=batch.get("deprels"),
+            word_starts=batch.get("word_starts"),
+        )
+        return {"loss": out.get("loss", None), "arc_scores": out["arc_scores"]}
+
+
+def collate_fn(features: List[Dict]):
+    """리스트 기반 정렬 결과를 패딩하여 텐서 배치로 변환합니다.
+
+    - heads/deprels: 길이 불일치가 있으므로 -100을 패딩 값으로 사용
+    - word_starts: 마스크이므로 0으로 패딩
+    """
+    batch = default_data_collator(
+        [
+            {k: v for k, v in f.items() if k in ["input_ids", "attention_mask"]}
+            for f in features
+        ]
+    )
+    def pad_list(list_of_lists, pad=-100):
+        maxlen = max((len(x) for x in list_of_lists), default=0)
+        return [x + [pad] * (maxlen - len(x)) for x in list_of_lists]
+
+    batch["heads"] = torch.tensor(pad_list([f["heads"] for f in features]), dtype=torch.long)
+    batch["deprels"] = torch.tensor(pad_list([f["deprels"] for f in features]), dtype=torch.long)
+    batch["word_starts"] = torch.tensor(
+        pad_list([f["word_starts"] for f in features], pad=0), dtype=torch.long
+    )
+    return batch
+
+
+def compute_metrics_eval(eval_pred):
+    """arc(head) 정확도 계산.
+
+    - 레이블의 -100은 무시
+    - arc_scores argmax로 예측 head를 얻어 비교
+    """
+    arc_scores = eval_pred.predictions
+    label_heads = eval_pred.label_ids
+    pred_heads = arc_scores.argmax(-1)
+    mask = label_heads != -100
+    acc = (pred_heads[mask] == label_heads[mask]).mean() if mask.any() else 0.0
+    return {"head_accuracy": float(acc)}
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fine-tune klue/roberta-large on KLUE-DP")
     parser.add_argument("--data_dir", type=str, required=True)
@@ -327,62 +396,7 @@ def main():
         report_to=["none"],
     )
 
-    class Wrapper(nn.Module):
-        """Trainer 호환 래퍼.
-
-        - loss, arc_scores만 노출하여 평가 시 head 정확도를 계산합니다.
-        """
-        def __init__(self, base: RobertaBiaffineDependencyParser):
-            super().__init__()
-            self.base = base
-
-        def forward(self, **batch):
-            out = self.base(
-                input_ids=batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                heads=batch.get("heads"),
-                deprels=batch.get("deprels"),
-                word_starts=batch.get("word_starts"),
-            )
-            return {"loss": out.get("loss", None), "arc_scores": out["arc_scores"]}
-
     wrapped = Wrapper(model)
-
-    def collate_fn(features: List[Dict]):
-        """리스트 기반 정렬 결과를 패딩하여 텐서 배치로 변환합니다.
-
-        - heads/deprels: 길이 불일치가 있으므로 -100을 패딩 값으로 사용
-        - word_starts: 마스크이므로 0으로 패딩
-        """
-        batch = default_data_collator(
-            [
-                {k: v for k, v in f.items() if k in ["input_ids", "attention_mask"]}
-                for f in features
-            ]
-        )
-        def pad_list(list_of_lists, pad=-100):
-            maxlen = max((len(x) for x in list_of_lists), default=0)
-            return [x + [pad] * (maxlen - len(x)) for x in list_of_lists]
-
-        batch["heads"] = torch.tensor(pad_list([f["heads"] for f in features]), dtype=torch.long)
-        batch["deprels"] = torch.tensor(pad_list([f["deprels"] for f in features]), dtype=torch.long)
-        batch["word_starts"] = torch.tensor(
-            pad_list([f["word_starts"] for f in features], pad=0), dtype=torch.long
-        )
-        return batch
-
-    def compute_metrics_eval(eval_pred):
-        """arc(head) 정확도 계산.
-
-        - 레이블의 -100은 무시
-        - arc_scores argmax로 예측 head를 얻어 비교
-        """
-        arc_scores = eval_pred.predictions
-        label_heads = eval_pred.label_ids
-        pred_heads = arc_scores.argmax(-1)
-        mask = label_heads != -100
-        acc = (pred_heads[mask] == label_heads[mask]).mean() if mask.any() else 0.0
-        return {"head_accuracy": float(acc)}
 
     trainer = Trainer(
         model=wrapped,

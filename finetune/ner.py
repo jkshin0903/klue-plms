@@ -60,6 +60,7 @@ from utils import (
     make_dataset_dict,
     build_id_maps,
     get_tokenizer,
+    read_ner_tsv,
 )
 
 
@@ -92,10 +93,20 @@ def load_klue_ner(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
             norm.append({"tokens": tokens, "tags": tags})
         return norm
 
-    train = normalize(read_json(os.path.join(data_dir, "train.json")))
-    dev = normalize(read_json(os.path.join(data_dir, "dev.json")))
-    test_path = os.path.join(data_dir, "test.json")
-    test = normalize(read_json(test_path)) if os.path.exists(test_path) else []
+    # TSV 우선, 없으면 JSON 사용
+    train_tsv = read_ner_tsv(os.path.join(data_dir, "train.tsv"))
+    dev_tsv = read_ner_tsv(os.path.join(data_dir, "dev.tsv"))
+    test_tsv = read_ner_tsv(os.path.join(data_dir, "test.tsv"))
+
+    if train_tsv and dev_tsv:
+        train = train_tsv
+        dev = dev_tsv
+        test = test_tsv
+    else:
+        train = normalize(read_json(os.path.join(data_dir, "train.json")))
+        dev = normalize(read_json(os.path.join(data_dir, "dev.json")))
+        test_path = os.path.join(data_dir, "test.json")
+        test = normalize(read_json(test_path)) if os.path.exists(test_path) else []
     return train, dev, test
 
 
@@ -156,16 +167,7 @@ def compute_metrics_builder(id_to_label):
     - seqeval이 있으면 시퀀스 라벨링 지표를 반환
     - 없으면 토큰 정확도를 대체 지표로 사용
     """
-    def compute_metrics(p):
-        if not HAVE_SEQEVAL:
-            # seqeval 미설치 시 토큰 단위 정확도로 대체
-            preds = p.predictions.argmax(-1)
-            labels = p.label_ids
-            mask = labels != -100
-            correct = (preds == labels) & mask
-            acc = correct.sum() / mask.sum()
-            return {"accuracy": float(acc)}
-
+    def _compute_metrics_seqeval(p, id_to_label):
         preds = p.predictions.argmax(-1)
         labels = p.label_ids
         true_labels, true_preds = [], []
@@ -178,7 +180,6 @@ def compute_metrics_builder(id_to_label):
                 curr_preds.append(id_to_label[int(p_id)])
             true_labels.append(curr_labs)
             true_preds.append(curr_preds)
-
         return {
             "precision": precision_score(true_labels, true_preds),
             "recall": recall_score(true_labels, true_preds),
@@ -186,7 +187,15 @@ def compute_metrics_builder(id_to_label):
             "report": classification_report(true_labels, true_preds),
         }
 
-    return compute_metrics
+    def _compute_metrics_token_acc(p):
+        preds = p.predictions.argmax(-1)
+        labels = p.label_ids
+        mask = labels != -100
+        correct = (preds == labels) & mask
+        acc = correct.sum() / mask.sum()
+        return {"accuracy": float(acc)}
+
+    return (lambda p: _compute_metrics_seqeval(p, id_to_label)) if HAVE_SEQEVAL else _compute_metrics_token_acc
 
 
 def main():

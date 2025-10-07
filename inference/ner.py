@@ -24,7 +24,7 @@ from typing import Dict, List
 import torch
 from transformers import AutoModelForTokenClassification
 
-from utils import get_tokenizer, setup_cuda, read_json
+from utils import get_tokenizer, setup_cuda, read_json, read_tsv_generic, parse_space_separated_list
 
 
 def load_labels(path: str) -> List[str]:
@@ -57,14 +57,28 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ckpt_dir", type=str, required=True)
     parser.add_argument("--tokens", type=str, nargs="+", help="공백 분리 토큰 입력")
+    parser.add_argument("--input_tsv", type=str, default=None, help="\t 구분 TSV 파일 경로 (tokens 열 필요)")
     parser.add_argument("--cuda_visible_devices", type=str, default=None)
     parser.add_argument("--device_index", type=int, default=0)
     args = parser.parse_args()
 
     setup_cuda(args.cuda_visible_devices, args.device_index)
 
-    result = predict(args.tokens, args.ckpt_dir)
-    print(json.dumps(result, ensure_ascii=False))
+    tokens_list: List[List[str]] = []
+    if args.input_tsv:
+        rows = read_tsv_generic(args.input_tsv)
+        for r in rows:
+            toks = parse_space_separated_list(r.get("tokens"))
+            if toks:
+                tokens_list.append(toks)
+    elif args.tokens:
+        tokens_list.append(args.tokens)
+
+    outputs = [predict(toks, args.ckpt_dir) for toks in tokens_list]
+    if len(outputs) == 1:
+        print(json.dumps(outputs[0], ensure_ascii=False))
+    else:
+        print(json.dumps(outputs, ensure_ascii=False))
 
 
 if __name__ == "__main__":
