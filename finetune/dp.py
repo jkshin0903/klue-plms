@@ -1,23 +1,47 @@
 """
 klue/roberta-large 기반 KLUE-DP(의존 구문 분석) 파인튜닝 스크립트.
 
-데이터셋 구조(우선 포맷: TSV):
-- train.tsv, dev.tsv, test.tsv 파일을 가정하며 각 파일은 헤더가 있는 TSV입니다.
-- 각 행은 다음 열을 포함합니다.
-  - tokens: 공백으로 구분된 토큰 문자열 리스트
-  - heads: 공백으로 구분된 정수 리스트(1-based head, 0은 ROOT)
-  - deprels: 공백으로 구분된 의존관계 라벨 문자열 리스트
-- TSV가 없을 경우 호환을 위해 train.json/dev.json/test.json을 fallback으로 지원합니다.
+데이터셋 구조(우선 포맷: TSV)
+- 파일: train.tsv, dev.tsv, test.tsv (헤더 포함)
+- 열 스키마:
+  - tokens: 공백으로 구분된 토큰 리스트
+    예) "나는 밥을 먹었다"
+  - heads: 공백으로 구분된 정수 리스트(토큰 수와 동일 길이)
+    1-based 인덱스, 0은 ROOT
+    예) "2 4 4 0" (각 토큰의 head 토큰 번호)
+  - deprels: 공백으로 구분된 라벨 리스트(토큰 수와 동일 길이)
+    예) "nsubj obj root root"
+- 제약/불변식:
+  - len(tokens) == len(heads) == len(deprels)
+  - heads[i] == 0 → 해당 토큰은 ROOT에 연결됨
+  - 라벨 공간은 train/dev/test 전체 합집합 + "root"
+- TSV 미존재 시 JSON 포맷(train.json, dev.json, test.json) fallback 지원
 
-전처리 개요:
-- 토큰 리스트를 워드피스 단위로 토크나이즈합니다.
-- 단어 첫 서브워드 위치에만 학습 신호를 주기 위해 `word_starts` 마스크를 생성합니다.
-- 단어 단위 head/label을 첫 서브워드 인덱스로 매핑하여 워드피스 인덱스 공간으로 정렬합니다.
+전처리 및 정렬(워드피스 기준)
+- 토큰 리스트를 워드피스 단위로 토크나이즈합니다(is_split_into_words=True).
+- 각 단어의 “첫 서브워드”를 찾아 해당 위치만 유효 토큰으로 사용하기 위한 word_starts(0/1) 마스크를 생성합니다.
+- 단어 단위 heads(1-based)와 deprels를 “첫 서브워드 인덱스” 기준으로 매핑합니다.
+  - ROOT(0)는 head를 -1로 표기하여 손실 계산에서 무시되도록 합니다.
+  - 문장 잘림 등으로 길이가 불일치할 경우, 공통 길이에 맞춰 안전하게 자릅니다.
 
-모델 개요:
-- RoBERTa 인코더 위에 dep/head MLP 투영 후 biaffine 레이어로
-  (1) arc(head 선택) 점수와 (2) 관계(deprel) 점수를 계산합니다.
-- 학습 시 arc 손실과 관계 손실을 함께 최적화합니다.
+모델/학습 로직
+- 인코더: RoBERTa(last_hidden_state, attentions)
+- 투영: dep_mlp/ head_mlp로 의존어/지배어 표현 추출
+- 점수화: arc_biaffine(arc 점수), rel_biaffine(관계 라벨 점수)
+- 마스킹: 첫 서브워드 위치만 유효로 간주해 arc/rel 계산 범위를 제한
+- 손실:
+  - arc 손실: 모든 유효 토큰에 대해 정답 head 인덱스에 대한 cross entropy
+  - rel 손실: 유효 (dep, head) 쌍에 대해서만 라벨 cross entropy
+  - 최종 손실 = arc + rel
+- 평가 지표: head_accuracy(arc_scores.argmax(-1)와 정답 비교, -100 마스크 무시)
+
+훈련 플로우
+1) 데이터 로드(TSV 우선, JSON fallback) 후 라벨 목록/맵 구성
+2) DatasetDict 생성 및 map으로 토크나이즈·정렬 수행
+3) 라벨 목록(deprels.json) 저장, 모델/인자 생성
+4) Trainer로 학습 및 평가(evaluation_strategy="epoch", metric_for_best_model="head_accuracy")
+5) EarlyStopping 콜백으로 지표 개선 없을 시 조기 종료(예: patience=2)
+6) 최종 가중치(pytorch_model.bin) 저장 및(선택) test 평가
 """
 
 from __future__ import annotations

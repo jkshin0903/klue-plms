@@ -1,29 +1,36 @@
 """
 klue/roberta-large 기반 KLUE-NER 파인튜닝 스크립트.
 
-데이터셋 구조(우선 포맷: TSV):
-- train.tsv, dev.tsv, test.tsv 파일을 가정하며 각 파일은 헤더가 있는 TSV입니다.
-- 각 행은 다음 열을 포함합니다.
-  - tokens: 공백으로 구분된 토큰 문자열 리스트
-  - tags: 공백으로 구분된 IOB2 라벨 문자열 리스트
-- TSV가 없을 경우 호환을 위해 train.json/dev.json/test.json과 원본(text/entities) 포맷을 fallback으로 지원합니다.
+데이터셋 구조(우선 포맷: TSV)
+- 파일: train.tsv, dev.tsv, test.tsv (헤더 포함)
+- 열 스키마:
+  - tokens: 공백으로 구분된 토큰 리스트
+    예) "이순신 은 위인 이다"
+  - tags: 공백으로 구분된 IOB2 라벨 리스트(토큰 수와 동일 길이)
+    예) "B-PER O O O O"
+- 제약/불변식:
+  - len(tokens) == len(tags)
+  - 라벨은 IOB2 규칙을 따르며, "O" 라벨은 항상 포함됩니다.
+- TSV 미존재 시 JSON(train.json, dev.json, test.json) / 원본(text, entities) fallback 지원
 
-전처리 개요:
-- 단어 토큰을 워드피스 토큰으로 분할하면서 라벨을 정렬합니다.
-- 특수 토큰([CLS]/[SEP])은 -100으로 마스킹하여 손실에서 제외합니다.
-- 서브워드는 이전 단어의 내부로 간주하여 B-를 I-로 확장합니다.
+전처리 및 정렬(워드피스 기준)
+- 토큰을 워드피스로 분할하고, 특수 토큰([CLS]/[SEP])은 -100으로 마스킹합니다.
+- 서브워드는 이전 단어 라벨을 I-로 확장합니다(B-XXX → I-XXX 적용).
+- 정렬 결과는 tokenizer 출력 + labels(-100 포함)로 반환합니다.
 
-학습/평가:
-- AutoModelForTokenClassification을 사용하여 토큰 분류 태스크로 학습합니다.
-- 기본 평가는 seqeval이 설치되어 있으면 NER 지표(precision/recall/F1), 없으면 토큰 정확도를 사용합니다.
+모델/학습 로직
+- 모델: AutoModelForTokenClassification.from_pretrained
+- 데이터 결합: DataCollatorForTokenClassification
+- 지표: seqeval 설치 시 precision/recall/F1 및 classification_report 제공,
+        미설치 시 토큰 정확도 대체
+- EarlyStopping 콜백 사용 가능(예: patience=2)
 
-실행 예시:
-  python ner.py \
-    --data_dir ./data/klue-ner \
-    --output_dir ./outputs/ner \
-    --num_train_epochs 5 \
-    --per_device_train_batch_size 16 \
-    --learning_rate 3e-5
+훈련 플로우
+1) 데이터 로드(TSV 우선) → 라벨 목록/맵 구성
+2) DatasetDict로 변환 → map으로 토크나이즈/라벨 정렬 수행
+3) 라벨 목록(labels.json) 저장, 모델/인자/콜레이터 생성
+4) Trainer로 학습/평가(evaluation_strategy="epoch", metric_for_best_model="f1")
+5) best model 저장 및(선택) test 평가
 """
 
 from __future__ import annotations
