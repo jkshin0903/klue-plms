@@ -1,5 +1,22 @@
 """
 klue/roberta-large 기반 KLUE-DP(의존 구문 분석) 파인튜닝 스크립트.
+
+데이터셋 구조(간단 요약):
+- train.json, dev.json, test.json 파일을 가정하며 각 파일은 샘플 리스트입니다.
+- 각 샘플은 다음 키를 포함합니다.
+  - "tokens": 공백 토큰 단위의 토큰 문자열 리스트
+  - "heads": 각 단어의 head 단어 인덱스(1-based), 0은 ROOT를 의미
+  - "deprels": 각 단어의 의존관계 라벨 문자열 리스트
+
+전처리 개요:
+- 토큰 리스트를 워드피스 단위로 토크나이즈합니다.
+- 단어 첫 서브워드 위치에만 학습 신호를 주기 위해 `word_starts` 마스크를 생성합니다.
+- 단어 단위 head/label을 첫 서브워드 인덱스로 매핑하여 워드피스 인덱스 공간으로 정렬합니다.
+
+모델 개요:
+- RoBERTa 인코더 위에 dep/head MLP 투영 후 biaffine 레이어로
+  (1) arc(head 선택) 점수와 (2) 관계(deprel) 점수를 계산합니다.
+- 학습 시 arc 손실과 관계 손실을 함께 최적화합니다.
 """
 
 from __future__ import annotations
@@ -28,6 +45,12 @@ from utils import (
 
 
 def load_klue_dp(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+    """KLUE-DP 데이터셋을 로드합니다.
+
+    입력 디렉터리에서 train/dev/test JSON을 읽고, 파서 학습에 필요한 키만 추립니다.
+    존재하지 않을 수 있는 test.json은 없으면 빈 리스트를 반환합니다.
+    반환되는 각 샘플은 {"tokens", "heads", "deprels"} 키만 포함합니다.
+    """
     def pick(samples: List[Dict]) -> List[Dict]:
         out = []
         for s in samples:
@@ -48,6 +71,11 @@ def load_klue_dp(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
 
 
 def build_deprel_list(datasets: Tuple[List[Dict], List[Dict], List[Dict]]) -> List[str]:
+    """훈련/검증/테스트 전체에서 등장하는 의존관계 라벨 목록을 정렬해 반환합니다.
+
+    - "root" 라벨은 최소 포함되어야 하므로 기본으로 추가합니다.
+    - 테스트에만 등장하는 라벨 대비를 위해 전체 합집합을 사용합니다.
+    """
     labels = set(["root"])  # 기본값 포함
     for split in datasets:
         for s in split:
@@ -56,6 +84,19 @@ def build_deprel_list(datasets: Tuple[List[Dict], List[Dict], List[Dict]]) -> Li
 
 
 def tokenize_and_align_for_dp(examples, tokenizer, deprel_to_id):
+    """단어 단위 어노테이션을 워드피스 토큰 인덱스에 정렬합니다.
+
+    정렬 규칙:
+    - 각 단어의 첫 서브워드 위치에만 학습 신호를 부여(`word_starts`=1)
+    - head 인덱스(1-based)는 해당 head 단어의 첫 서브워드 인덱스로 매핑
+    - ROOT(0)는 -1로 보관하여 유효 head가 아님을 표시하며 손실 계산에서 무시됩니다.
+    - 문장 또는 라벨 길이 불일치 시(잘린 경우) 공통 길이에 맞춰 자릅니다.
+    반환 항목:
+    - input_ids/attention_mask(Transformers 표준)
+    - heads: 워드피스 기준 head 인덱스 리스트들의 리스트, 패딩은 collate에서 수행
+    - deprels: 의존관계 라벨 ID 리스트들의 리스트
+    - word_starts: 각 시퀀스 길이와 동일한 0/1 마스크(첫 서브워드=1)
+    """
     tokenized = tokenizer(
         examples["tokens"],
         is_split_into_words=True,
@@ -79,6 +120,7 @@ def tokenize_and_align_for_dp(examples, tokenizer, deprel_to_id):
                 word_to_first_wp[w] = idx
                 seen.add(w)
 
+        # 워드 수가 라벨 길이와 다를 수 있으므로 안전하게 공통 부분으로 자릅니다.
         num_words = max([-1] + [w for w in word_to_first_wp.keys()]) + 1 if word_to_first_wp else 0
         if num_words != len(heads) or num_words != len(deprels):
             cut = min(num_words, len(heads), len(deprels))
@@ -96,7 +138,7 @@ def tokenize_and_align_for_dp(examples, tokenizer, deprel_to_id):
                 continue
             dep_wp = word_to_first_wp[dep_word_idx]
             if h == 0:
-                head_wp = -1
+                head_wp = -1  # ROOT는 -1로 마킹하여 유효 head 아님을 표시
             else:
                 hw = h - 1
                 head_wp = word_to_first_wp.get(hw, -1)
@@ -114,6 +156,11 @@ def tokenize_and_align_for_dp(examples, tokenizer, deprel_to_id):
 
 
 class Biaffine(nn.Module):
+    """biaffine 점수화 모듈.
+
+    두 입력 벡터 x(의존어), y(지배어)에 대해 bilinear + linear 합으로 점수를 계산합니다.
+    arc(head 선택)과 relation(라벨) 모두에 공통으로 사용됩니다.
+    """
     def __init__(self, in1: int, in2: int, out: int):
         super().__init__()
         self.U = nn.Parameter(torch.zeros(out, in1, in2))
@@ -132,6 +179,12 @@ class Biaffine(nn.Module):
 
 
 class RobertaBiaffineDependencyParser(nn.Module):
+    """RoBERTa 인코더 + biaffine 기반 의존 구문 분석기.
+
+    - dep/head MLP로 인코더 은닉을 저차원 공간으로 투영
+    - arc_biaffine으로 head 선택 점수 계산, rel_biaffine으로 관계 라벨 점수 계산
+    - 학습 시 arc(전체 토큰에 대한 다중분류)와 관계(유효 head 쌍에 대한 다중분류) 손실을 합산
+    """
     def __init__(self, encoder_name: str, num_deprel: int, hidden_mlp: int = 256):
         super().__init__()
         self.encoder = AutoModel.from_pretrained(encoder_name)
@@ -146,11 +199,12 @@ class RobertaBiaffineDependencyParser(nn.Module):
         enc = enc_outputs.last_hidden_state
         attentions = enc_outputs.attentions  # Tuple[Layer] of [B,H,L,L]
 
+        # 첫 서브워드 위치만을 유효 토큰으로 간주하여 arc/rel 계산 범위를 제한합니다.
         mask = word_starts if word_starts is not None else attention_mask
         dep_h = self.dep_mlp(enc)
         head_h = self.head_mlp(enc)
         arc_scores = self.arc_biaffine(dep_h, head_h)
-        minus_inf = -1e4
+        minus_inf = -1e4  # 마스킹을 위한 큰 음수
         head_mask = (mask > 0).unsqueeze(1).expand(-1, arc_scores.size(1), -1)
         arc_scores = arc_scores.masked_fill(~head_mask, minus_inf)
 
@@ -159,9 +213,10 @@ class RobertaBiaffineDependencyParser(nn.Module):
         if heads is not None and deprels is not None:
             B, L = input_ids.size()
             device = input_ids.device
-            valid_positions = (mask > 0)
+            valid_positions = (mask > 0)  # 첫 서브워드 위치
             arc_logit = arc_scores
             target_heads = torch.full((B, L), fill_value=-100, dtype=torch.long, device=device)
+            # 단어 첫 서브워드 위치에 대해 gold head(워드피스 인덱스)를 채웁니다.
             for b in range(B):
                 idxs = torch.nonzero(valid_positions[b], as_tuple=False).squeeze(-1).tolist()
                 if not idxs:
@@ -178,6 +233,7 @@ class RobertaBiaffineDependencyParser(nn.Module):
 
             rel_logits_list = []
             rel_targets = []
+            # 관계 라벨은 (유효 dep, 유효 head) 쌍에 대해서만 계산합니다.
             for b in range(B):
                 idxs = torch.nonzero(valid_positions[b], as_tuple=False).squeeze(-1).tolist()
                 if not idxs:
@@ -272,6 +328,10 @@ def main():
     )
 
     class Wrapper(nn.Module):
+        """Trainer 호환 래퍼.
+
+        - loss, arc_scores만 노출하여 평가 시 head 정확도를 계산합니다.
+        """
         def __init__(self, base: RobertaBiaffineDependencyParser):
             super().__init__()
             self.base = base
@@ -289,6 +349,11 @@ def main():
     wrapped = Wrapper(model)
 
     def collate_fn(features: List[Dict]):
+        """리스트 기반 정렬 결과를 패딩하여 텐서 배치로 변환합니다.
+
+        - heads/deprels: 길이 불일치가 있으므로 -100을 패딩 값으로 사용
+        - word_starts: 마스크이므로 0으로 패딩
+        """
         batch = default_data_collator(
             [
                 {k: v for k, v in f.items() if k in ["input_ids", "attention_mask"]}
@@ -307,6 +372,11 @@ def main():
         return batch
 
     def compute_metrics_eval(eval_pred):
+        """arc(head) 정확도 계산.
+
+        - 레이블의 -100은 무시
+        - arc_scores argmax로 예측 head를 얻어 비교
+        """
         arc_scores = eval_pred.predictions
         label_heads = eval_pred.label_ids
         pred_heads = arc_scores.argmax(-1)

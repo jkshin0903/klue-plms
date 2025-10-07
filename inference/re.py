@@ -1,5 +1,17 @@
 """
-KLUE-RE 추론 스크립트: 파인튜닝된 체크포인트를 로드하여 관계 라벨과 attention map을 반환합니다.
+KLUE-RE 추론 스크립트
+
+개요:
+- 파인튜닝된 문장 분류 모델을 로드하여 (문장, 주어, 목적어) 삼자 정보로 관계 라벨을 예측합니다.
+- 레이어별 attention map을 함께 반환할 수 있습니다.
+
+입력/출력:
+- 입력: `--sentence` 문자열, `--subject`/`--object` JSON 문자열({"word", "type"}), 체크포인트 디렉터리.
+- 출력 JSON:
+  {
+    "label": "...",
+    "attentions": [[[...]]]  # 레이어 x 헤드 x L x L
+  }
 """
 
 from __future__ import annotations
@@ -15,6 +27,7 @@ from utils import get_tokenizer, setup_cuda, insert_entity_markers
 
 
 def predict(sentence: str, subject: Dict, obj: Dict, ckpt_dir: str):
+    """문장/엔티티 정보를 받아 관계 라벨을 예측합니다."""
     tokenizer = get_tokenizer()
     model = AutoModelForSequenceClassification.from_pretrained(ckpt_dir, output_attentions=True)
     model.eval()

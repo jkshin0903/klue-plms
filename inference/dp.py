@@ -1,6 +1,17 @@
 """
-KLUE-DP 추론 스크립트: 파인튜닝된 biaffine 파서를 로드하여 헤드/라벨 예측과
-attention map을 반환합니다.
+KLUE-DP 추론 스크립트
+
+개요:
+- 파인튜닝된 biaffine 의존 구문 분석기를 로드하여 입력 토큰에 대한 head 예측을 수행합니다.
+- 학습 시 모델에서 노출한 encoder attention map도 함께 반환할 수 있습니다.
+
+입력/출력:
+- 입력: 공백 분리된 토큰 리스트(`--tokens`), 체크포인트 디렉터리(`--ckpt_dir`).
+- 출력 JSON:
+  {
+    "heads": [int, ...],  # 각 토큰 위치의 예측 head 인덱스(워드피스 기준 argmax 결과)
+    "attentions": [[[...]] or null]  # 레이어별 attention(옵션)
+  }
 """
 
 from __future__ import annotations
@@ -17,11 +28,17 @@ from finetune.dp import RobertaBiaffineDependencyParser
 
 
 def load_deprels(path: str) -> List[str]:
+    """학습 시 저장한 의존관계 라벨 목록을 로드합니다."""
     with open(path, "r", encoding="utf-8") as f:
         return list(json.load(f))
 
 
 def predict(tokens: List[str], ckpt_dir: str):
+    """토큰 리스트에 대해 head 인덱스를 예측합니다.
+
+    - 학습 시 저장된 `deprels.json`을 로드해 라벨 공간 크기를 복원합니다.
+    - 파라미터는 `pytorch_model.bin`에서 state_dict 형태로 복원합니다.
+    """
     tokenizer = get_tokenizer()
     deprels = load_deprels(f"{ckpt_dir}/deprels.json")
 
@@ -41,7 +58,7 @@ def predict(tokens: List[str], ckpt_dir: str):
         )
         arc_scores = outputs["arc_scores"]  # [1,L,L]
         pred_heads = arc_scores.argmax(-1).squeeze(0).tolist()
-        # Encoder attentions는 finetune.dp의 forward에서 outputs에 담아 반환
+        # Encoder attentions는 finetune.dp의 forward에서 outputs에 담아 반환됩니다.
         attentions = outputs.get("attentions")
 
     return {

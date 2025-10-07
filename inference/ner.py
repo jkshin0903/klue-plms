@@ -1,6 +1,18 @@
 """
-KLUE-NER 추론 스크립트: 파인튜닝된 체크포인트를 로드하여 문장 토큰에 대한 태깅과
-모델 내부 attention map을 반환합니다.
+KLUE-NER 추론 스크립트
+
+개요:
+- 파인튜닝된 토큰 분류 모델을 로드하여 입력 토큰 시퀀스의 IOB 태그를 예측합니다.
+- 모델이 출력하는 레이어별 attention map을 함께 반환할 수 있습니다.
+
+입력/출력:
+- 입력: 공백 분리된 토큰 리스트(`--tokens`), 체크포인트 디렉터리(`--ckpt_dir`).
+- 출력 JSON:
+  {
+    "tokens": ["..."],
+    "labels": ["O"|"B-..."|"I-...", ...],
+    "attentions": [[[...]]]  # 레이어 x 헤드 x L x L
+  }
 """
 
 from __future__ import annotations
@@ -16,11 +28,13 @@ from utils import get_tokenizer, setup_cuda, read_json
 
 
 def load_labels(path: str) -> List[str]:
+    """학습 시 저장한 라벨 목록(labels.json)을 로드합니다."""
     with open(path, "r", encoding="utf-8") as f:
         return list(json.load(f))
 
 
 def predict(tokens: List[str], ckpt_dir: str):
+    """토큰 리스트에 대해 IOB 라벨을 예측하고 attention을 함께 반환합니다."""
     tokenizer = get_tokenizer()
     labels = load_labels(f"{ckpt_dir}/labels.json")
     id_to_label = {i: l for i, l in enumerate(labels)}

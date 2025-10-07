@@ -1,10 +1,22 @@
 """
 klue/roberta-large 기반 KLUE-NER 파인튜닝 스크립트.
 
-입력 데이터 형식 (KLUE 공개 포맷과 호환):
-- train.json, dev.json, test.json: 샘플 리스트
-- 각 샘플: {"tokens": ["..."], "tags": ["B-PS", ...]} 형식이거나
-  오리지널 KLUE 엔티티 포맷일 수 있으며, 내부적으로 tokens/tags로 정규화합니다.
+데이터셋 구조:
+- 입력 파일: train.json, dev.json, test.json (선택). 모든 파일은 샘플 리스트입니다.
+- 각 샘플은 두 가지 형태 중 하나입니다.
+  1) 정규화된 형태: {"tokens": ["..."], "tags": ["B-PS", ...]}
+  2) 원본 형태: {"text": "문장", "entities": [{"text": "이순신", "type": "PER"}, ...]}
+     - 여기서는 데모 목적으로 공백 단위 토크나이즈 후 동일 토큰 문자열 매칭으로 IOB2 태깅을 구성합니다.
+       실제 서비스/대회 환경에서는 문자 오프셋 기반 정밀 정렬을 권장합니다.
+
+전처리 개요:
+- 단어 토큰을 워드피스 토큰으로 분할하면서 라벨을 정렬합니다.
+- 특수 토큰([CLS]/[SEP])은 -100으로 마스킹하여 손실에서 제외합니다.
+- 서브워드는 이전 단어의 내부로 간주하여 B-를 I-로 확장합니다.
+
+학습/평가:
+- AutoModelForTokenClassification을 사용하여 토큰 분류 태스크로 학습합니다.
+- 기본 평가는 seqeval이 설치되어 있으면 NER 지표(precision/recall/F1), 없으면 토큰 정확도를 사용합니다.
 
 실행 예시:
   python ner.py \
@@ -52,11 +64,12 @@ from utils import (
 
 
 def load_klue_ner(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
-    """KLUE-NER 데이터셋을 로드하고 IOB2 토큰 라벨로 정규화합니다.
+    """KLUE-NER 데이터셋을 로드하고 IOB2 라벨로 정규화합니다.
 
-    파일이 이미 "tokens"/"tags"를 포함하면 그대로 사용합니다.
-    오리지널 KLUE 포맷(문장+엔티티)인 경우, 공백 단위 토크나이즈 후 간단히 매핑합니다.
-    (실서비스에선 문자 오프셋 기반 정밀 정렬을 권장합니다.)
+    - 이미 tokens/tags가 있으면 그대로 사용합니다.
+    - 원본 포맷(text/entities)은 공백 기준 토크나이즈 + 단순 문자열 매칭으로 IOB2를 구성합니다.
+      정확한 라벨 정렬이 필요하면 문자 오프셋 기반 매핑을 사용해야 합니다.
+    반환: (train, dev, test) 각 원소는 {"tokens", "tags"} 리스트
     """
     def normalize(samples: List[Dict]) -> List[Dict]:
         norm = []
@@ -87,6 +100,11 @@ def load_klue_ner(data_dir: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
 
 
 def build_label_list(datasets: Tuple[List[Dict], List[Dict], List[Dict]]) -> List[str]:
+    """세 분할(train/dev/test)의 라벨 합집합을 정렬해 반환합니다.
+
+    - 테스트에만 등장하는 라벨 대응을 위해 전체 합집합을 사용합니다.
+    - "O" 라벨은 항상 포함됩니다.
+    """
     labels = {"O"}
     for split in datasets:
         for s in split:
@@ -95,7 +113,14 @@ def build_label_list(datasets: Tuple[List[Dict], List[Dict], List[Dict]]) -> Lis
 
 
 def tokenize_and_align_labels(examples, tokenizer, label_to_id):
-    # 단어 단위 토크나이즈 후 워드피스에 라벨을 정렬합니다.
+    """단어 단위 라벨을 워드피스 토큰에 정렬합니다.
+
+    규칙:
+    - 특수 토큰은 -100으로 표시하여 손실에서 제외
+    - 서브워드에는 이전 단어 라벨을 I- 접두로 확장
+    - 라벨 ID 매핑은 `label_to_id`를 사용
+    반환: tokenizer 출력 + "labels" 키가 포함된 dict
+    """
     tokenized = tokenizer(
         examples["tokens"],
         is_split_into_words=True,
@@ -126,6 +151,11 @@ def tokenize_and_align_labels(examples, tokenizer, label_to_id):
 
 
 def compute_metrics_builder(id_to_label):
+    """Trainer의 compute_metrics 콜백을 생성합니다.
+
+    - seqeval이 있으면 시퀀스 라벨링 지표를 반환
+    - 없으면 토큰 정확도를 대체 지표로 사용
+    """
     def compute_metrics(p):
         if not HAVE_SEQEVAL:
             # seqeval 미설치 시 토큰 단위 정확도로 대체
@@ -187,7 +217,7 @@ def main():
     )
     set_seed(args.seed)
 
-    # Load and prepare data
+    # 데이터 로드 및 라벨 준비
     train, dev, test = load_klue_ner(args.data_dir)
     label_list = build_label_list((train, dev, test))
     label_to_id, id_to_label = build_id_maps(label_list)
@@ -222,10 +252,10 @@ def main():
         per_device_eval_batch_size=args.per_device_eval_batch_size,
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        logging_strategy="steps",
+        logging_strategy="steps",  # 학습 중 일정 step마다 로그 출력
         logging_steps=100,
-        load_best_model_at_end=True,
-        metric_for_best_model="f1",
+        load_best_model_at_end=True,  # 가장 좋은 모델 자동 로드
+        metric_for_best_model="f1",  # best model 기준 지표
         warmup_ratio=args.warmup_ratio,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         fp16=args.fp16,
