@@ -107,6 +107,8 @@ def main() -> None:
         num_labels=num_labels,
         problem_type="single_label_classification",
     )
+    # 어텐션 맵 출력 활성화 (추론 시 output_attentions=True로도 제어 가능)
+    model.config.output_attentions = True
     model.resize_token_embeddings(len(tokenizer))
 
     def preprocess(examples: Dict[str, Any]) -> Dict[str, Any]:
@@ -114,7 +116,7 @@ def main() -> None:
             insert_entity_markers(s, se, oe)  # type: ignore[arg-type]
             for s, se, oe in zip(examples["sentence"], examples["subject_entity"], examples["object_entity"])
         ]
-        enc = tokenizer(texts, truncation=True)
+        enc = tokenizer(texts, truncation=True, return_attention_mask=True)
         enc["labels"] = examples["label"] # loss 계산, backprop 과정에서 사용될 라벨 지정
         return enc
 

@@ -111,6 +111,8 @@ class BiaffineParserConfig(PretrainedConfig):
         self.mlp_arc = mlp_arc
         self.mlp_rel = mlp_rel
         self.num_relations = num_relations
+        # 기본적으로 어텐션 맵을 출력하도록 설정
+        self.output_attentions = True
 
 
 class RobertaBiaffineDependencyParser(PreTrainedModel):
@@ -161,7 +163,14 @@ class RobertaBiaffineDependencyParser(PreTrainedModel):
            "rel_logits": (batch_size, seq_len, seq_len, num_relations),
            "loss": 스칼라 | 학습 시 제공}
         """
-        enc_out = self.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state  # (batch_size, seq_len, hidden_size)
+        # 하위 인코더에 어텐션 출력 플래그를 전달
+        return_attn = self.config.output_attentions
+        enc_outputs = self.encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            output_attentions=return_attn,
+        )
+        enc_out = enc_outputs.last_hidden_state  # (batch_size, seq_len, hidden_size)
         dep_arc = self.mlp_dep_arc(enc_out)  # (batch_size, seq_len, arc_hidden_dim)
         head_arc = self.mlp_head_arc(enc_out)  # (batch_size, seq_len, arc_hidden_dim)
         arc_scores = self.arc_biaffine(dep_arc, head_arc)  # (batch_size, seq_len, seq_len)
@@ -171,6 +180,9 @@ class RobertaBiaffineDependencyParser(PreTrainedModel):
         rel_scores = self.rel_biaffine(dep_rel, head_rel)  # (batch_size, seq_len, seq_len, num_relations)
 
         output: Dict[str, torch.Tensor] = {"arc_logits": arc_scores, "rel_logits": rel_scores}
+        if return_attn and hasattr(enc_outputs, "attentions") and enc_outputs.attentions is not None:
+            # Tuple[batch, num_heads, seq_len, seq_len] per layer
+            output["attentions"] = enc_outputs.attentions
 
         if labels_head is not None and labels_deprel is not None:
             # Arc 손실: 각 토큰 i에 대해 head 인덱스 j를 예측하는 교차 엔트로피

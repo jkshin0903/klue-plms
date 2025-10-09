@@ -56,6 +56,8 @@ def main() -> None:
         model_name,
         num_labels=num_labels,
     )
+    # 어텐션 맵 출력 활성화 (추론 시 output_attentions=True로도 제어 가능)
+    model.config.output_attentions = True
 
     # 문자 단위 토큰에 맞춘 정렬/매핑: offset_mapping을 이용하여 서브워드 ↔ 원문 문자 위치를 정렬합니다.
     def tokenize_and_align_labels(examples: Dict[str, Any]) -> Dict[str, Any]:
