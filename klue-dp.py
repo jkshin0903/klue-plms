@@ -31,6 +31,7 @@ IGNORE_INDEX: int = -100
 
 from typing import Dict, Any, List, Tuple
 
+import os
 import math
 import torch
 import torch.nn as nn
@@ -46,6 +47,15 @@ from transformers import (
     TrainingArguments,
 )
 import evaluate
+
+# GPU 설정
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 0 사용 할시 (~48G 사용)
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"  # 0,1 둘다 사용해야 할시 (~96G 사용)
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"  # 다른사람이 실수로 접속해서 메모리 초과 되서 끊기는 것 방지 가능
+os.environ['TORCH_USE_CUDA_DSA'] = "1"
+
+device = torch.device(f'cuda:0')  # VISIBLE DEVICES 중 0번째 사용할 시
+torch.cuda.set_device(device)
 
 
 class Biaffine(nn.Module):
