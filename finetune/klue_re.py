@@ -38,10 +38,10 @@ from transformers import (
     TrainingArguments,
 )
 import evaluate
+from utils.re_dataset_saver import save_tokenized_dataset_info
 
 # GPU 설정
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 0 사용 할시 (~48G 사용)
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"  # 0,1 둘다 사용해야 할시 (~96G 사용)
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"  # 다른사람이 실수로 접속해서 메모리 초과 되서 끊기는 것 방지 가능
 os.environ['TORCH_USE_CUDA_DSA'] = "1"
 
@@ -117,6 +117,7 @@ def main() -> None:
         model_name,
         num_labels=num_labels,
         problem_type="single_label_classification",
+        attn_implementation="eager",  # 어텐션 맵 출력을 위해 eager 구현 사용
     )
     # 어텐션 맵 출력 활성화 (추론 시 output_attentions=True로도 제어 가능)
     model.config.output_attentions = True
@@ -138,6 +139,9 @@ def main() -> None:
         desc="Insert entity markers and tokenize",
     )
 
+    # 토크나이징된 데이터셋 내용을 파일로 저장
+    save_tokenized_dataset_info(tokenized, tokenizer, label_names)
+
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     acc = evaluate.load("accuracy")
@@ -156,7 +160,7 @@ def main() -> None:
     training_args = TrainingArguments(
         output_dir="./results/klue-re",
         logging_dir="./results/klue-re/logs",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",  # evaluation_strategy → eval_strategy로 변경
         save_strategy="epoch",
         save_total_limit=2,
         learning_rate=2e-5,
@@ -179,8 +183,8 @@ def main() -> None:
         compute_metrics=compute_metrics,
     )
 
-    trainer.train()
-    trainer.evaluate()
+    # trainer.train()
+    # trainer.evaluate()
 
 
 if __name__ == "__main__":

@@ -36,6 +36,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from datasets import load_dataset
 from transformers import (
     AutoTokenizer,
@@ -47,10 +48,10 @@ from transformers import (
     TrainingArguments,
 )
 import evaluate
+from utils.dp_dataset_saver import save_tokenized_dataset_info
 
 # GPU 설정
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 0 사용 할시 (~48G 사용)
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"  # 0,1 둘다 사용해야 할시 (~96G 사용)
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"  # 다른사람이 실수로 접속해서 메모리 초과 되서 끊기는 것 방지 가능
 os.environ['TORCH_USE_CUDA_DSA'] = "1"
 
@@ -143,7 +144,10 @@ class RobertaBiaffineDependencyParser(PreTrainedModel):
 
     def __init__(self, config: BiaffineParserConfig) -> None:
         super().__init__(config)
-        self.encoder = AutoModel.from_pretrained(config.encoder_name)
+        self.encoder = AutoModel.from_pretrained(
+            config.encoder_name,
+            attn_implementation="eager"  # 어텐션 맵 출력을 위해 eager 구현 사용
+        )
         hidden = self.encoder.config.hidden_size
 
         self.mlp_dep_arc = nn.Sequential(nn.Linear(hidden, config.mlp_arc), nn.ReLU(), nn.Dropout(0.33))
@@ -225,7 +229,8 @@ def build_labels_and_align(
     tokenizer: Any,
     tokens: List[str],
     heads: List[int],
-    deprels: List[int],
+    deprels: List[str],
+    deprel_to_id: Dict[str, int],
 ) -> Dict[str, Any]:
     enc = tokenizer(tokens, is_split_into_words=True, truncation=True)
     word_ids = enc.word_ids() # 개별 토큰이 속한 단어의 인덱스
@@ -249,7 +254,7 @@ def build_labels_and_align(
         # 정답 head가 ROOT(대개 0 또는 -1)를 가리키면 적절한 토큰으로 매핑합니다. 여기서는 단순화를 위해 0(CLS)로 매핑.
         gold_head_tok = 0 if gold_head_word <= 0 else word_to_first_subtok.get(gold_head_word, 0)
         labels_head[tok_i] = gold_head_tok
-        labels_deprel[tok_i] = int(deprels[w_idx])
+        labels_deprel[tok_i] = deprel_to_id[deprels[w_idx]]
 
     enc["labels_head"] = labels_head
     enc["labels_deprel"] = labels_deprel
@@ -260,8 +265,29 @@ def main() -> None:
     dataset = load_dataset("klue", "dp")
 
     # 의존관계 라벨 이름/개수 추출
-    rel_feature = dataset["train"].features["deprel"].feature  # type: ignore[attr-defined]
-    num_relations = len(rel_feature.names)  # type: ignore[assignment]
+    rel_feature = dataset["train"].features["deprel"]
+    print(f"Deprel feature type: {type(rel_feature)}")
+    print(f"Deprel feature: {rel_feature}")
+    
+    # deprel이 Value 타입인 경우 고유값들을 추출
+    if hasattr(rel_feature, 'names'):
+        num_relations = len(rel_feature.names)
+        rel_names = rel_feature.names
+    else:
+        # Value 타입인 경우 모든 고유값을 수집 (train + validation)
+        all_deprels = []
+        for split in ["train", "validation"]:
+            if split in dataset:
+                for sample in dataset[split]:
+                    all_deprels.extend(sample["deprel"])
+        unique_deprels = sorted(list(set(all_deprels)))
+        num_relations = len(unique_deprels)
+        rel_names = unique_deprels
+        print(f"Unique deprel values: {unique_deprels}")
+    
+    # 문자열 라벨을 정수 ID로 매핑하는 딕셔너리 생성
+    deprel_to_id = {label: idx for idx, label in enumerate(rel_names)}
+    print(f"Deprel to ID mapping: {deprel_to_id}")
 
     model_name = "klue/roberta-large"
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
@@ -277,7 +303,7 @@ def main() -> None:
             "labels_deprel": []
         }
         for tokens, heads, deprels in zip(examples["word_form"], examples["head"], examples["deprel"]):
-            enc = build_labels_and_align(tokenizer, tokens, heads, deprels)
+            enc = build_labels_and_align(tokenizer, tokens, heads, deprels, deprel_to_id)
             batch_enc["input_ids"].append(enc["input_ids"])
             batch_enc["attention_mask"].append(enc["attention_mask"])
             batch_enc["labels_head"].append(enc["labels_head"])
@@ -290,6 +316,9 @@ def main() -> None:
         remove_columns=dataset["train"].column_names,
         desc="Tokenize tokens and align DP labels",
     )
+
+    # 토크나이징된 데이터셋 내용을 파일로 저장
+    save_tokenized_dataset_info(tokenized, tokenizer, rel_names)
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True)
 
@@ -322,7 +351,7 @@ def main() -> None:
     training_args = TrainingArguments(
         output_dir="./results/klue-dp",
         logging_dir="./results/klue-dp/logs",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",  # evaluation_strategy → eval_strategy로 변경
         save_strategy="epoch",
         save_total_limit=2,
         learning_rate=3e-5,
@@ -376,8 +405,8 @@ def main() -> None:
         compute_metrics=compute_metrics,
     )
 
-    trainer.train()
-    trainer.evaluate()
+    # trainer.train()
+    # trainer.evaluate()
 
 
 if __name__ == "__main__":
