@@ -44,8 +44,9 @@ import evaluate
 
 # GPU 설정
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"  # 다른사람이 실수로 접속해서 메모리 초과 되서 끊기는 것 방지 가능
-os.environ['TORCH_USE_CUDA_DSA'] = "1"
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"  # 디버그가 아니면 0으로 두어 성능/메모리 영향 최소화
+os.environ['TORCH_USE_CUDA_DSA'] = "1"     # DSA는 디버그 전용, 오버헤드 큼
+os.environ['TRANSFORMERS_NO_TF'] = "1"     # TensorFlow가 GPU 메모리 선점하지 않도록 비활성화
 
 device = torch.device(f'cuda:0')  # VISIBLE DEVICES 중 0번째 사용할 시
 torch.cuda.set_device(device)
@@ -124,8 +125,8 @@ def main() -> None:
 
     data_collator = DataCollatorForTokenClassification(
         tokenizer=tokenizer,
-        padding='max_length',
-        max_length=tokenizer.model_max_length,
+        padding='longest',
+        pad_to_multiple_of=8,
     )
 
     # seqeval 기반 평가 지표
@@ -166,12 +167,16 @@ def main() -> None:
         save_total_limit=2,
         learning_rate=2e-5,
         weight_decay=0.01,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=16,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
         num_train_epochs=3,
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         report_to=["none"],
+        fp16=True,
+        gradient_checkpointing=True,
+        eval_accumulation_steps=64,
+        # prediction_loss_only=True,  # 지표 수집 불필요할 때만 활성화
     )
 
     trainer = Trainer(
