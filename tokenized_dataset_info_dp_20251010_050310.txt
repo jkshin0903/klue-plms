@@ -1,0 +1,707 @@
+================================================================================
+🔍 KLUE-DP 토크나이징된 데이터셋 상세 정보
+================================================================================
+생성 시간: 2025-10-10 05:03:10
+모델: klue/roberta-large
+토크나이저: BertTokenizerFast
+
+📊 데이터셋 기본 정보:
+--------------------------------------------------
+Train 샘플 수: 10000
+Validation 샘플 수: 2000
+의존관계 라벨 수: 37
+의존관계 라벨 목록: ['AP', 'AP_AJT', 'AP_CMP', 'AP_MOD', 'AP_SBJ', 'DP', 'IP', 'L', 'NP', 'NP_AJT', 'NP_CMP', 'NP_CNJ', 'NP_MOD', 'NP_OBJ', 'NP_SBJ', 'R', 'VNP', 'VNP_AJT', 'VNP_CMP', 'VNP_CNJ', 'VNP_MOD', 'VNP_OBJ', 'VNP_SBJ', 'VP', 'VP_AJT', 'VP_CMP', 'VP_CNJ', 'VP_MOD', 'VP_OBJ', 'VP_SBJ', 'X', 'X_AJT', 'X_CMP', 'X_CNJ', 'X_MOD', 'X_OBJ', 'X_SBJ']
+
+🏗️  데이터셋 구조:
+--------------------------------------------------
+Features: ['input_ids', 'attention_mask', 'labels_head', 'labels_deprel']
+Column names: ['input_ids', 'attention_mask', 'labels_head', 'labels_deprel']
+
+📝 샘플별 상세 정보:
+================================================================================
+
+🔍 샘플 1:
+--------------------------------------------------
+Input IDs 길이: 30
+Attention Mask 길이: 30
+Labels Head 길이: 30
+Labels Deprel 길이: 30
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      해당                   4162       4            8            1         
+2      그림                   4238       6            13           1         
+3      ##을                  2069       IGNORE       IGNORE       1         
+4      보                    1160       0            23           1         
+5      ##면                  2460       IGNORE       IGNORE       1         
+6      디즈니                  14834      9            8            1         
+7      공주                   6717       0            14           1         
+8      ##들이                 7285       IGNORE       IGNORE       1         
+9      브리                   6664       14           8            1         
+10     ##트니                 27562      IGNORE       IGNORE       1         
+11     스피                   6539       21           12           1         
+12     ##어스                 25286      IGNORE       IGNORE       1         
+13     ##의                  2079       IGNORE       IGNORE       1         
+14     앨범                   6711       21           11           1         
+15     ##이나                 15351      IGNORE       IGNORE       1         
+16     뮤직                   8673       21           11           1         
+17     ##비                  2151       IGNORE       IGNORE       1         
+18     ##디오                 4895       IGNORE       IGNORE       1         
+19     ,                    16         IGNORE       IGNORE       1         
+20     화보                   10879      22           8            1         
+21     속                    1283       24           8            1         
+22     모습                   3781       0            13           1         
+23     ##을                  2069       IGNORE       IGNORE       1         
+24     똑같이                  8631       0            0            1         
+25     재연                   17807      0            23           1         
+26     ##했                  2371       IGNORE       IGNORE       1         
+27     ##다                  2062       IGNORE       IGNORE       1         
+28     .                    18         IGNORE       IGNORE       1         
+29     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 30
+  • 라벨이 할당된 토큰 수: 14
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 해당 그림을 보면 디즈니 공주들이 브리트니 스피어스의 앨범이나 뮤직비디오, 화보 속 모습을 똑같이 재연했다.
+
+🔍 샘플 2:
+--------------------------------------------------
+Input IDs 길이: 40
+Attention Mask 길이: 40
+Labels Head 길이: 40
+Labels Deprel 길이: 40
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      이날                   3814       5            8            1         
+2      경연                   11755      0            9            1         
+3      ##에                  2170       IGNORE       IGNORE       1         
+4      ##는                  2259       IGNORE       IGNORE       1         
+5      곽                    605        10           8            1         
+6      ##진                  2043       IGNORE       IGNORE       1         
+7      ##언                  2347       IGNORE       IGNORE       1         
+8      씨                    1370       35           11           1         
+9      ,                    16         IGNORE       IGNORE       1         
+10     김                    648        14           8            1         
+11     ##필                  2163       IGNORE       IGNORE       1         
+12     씨                    1370       35           11           1         
+13     ,                    16         IGNORE       IGNORE       1         
+14     송유                   26859      18           8            1         
+15     ##빈                  2626       IGNORE       IGNORE       1         
+16     군                    617        35           11           1         
+17     ,                    16         IGNORE       IGNORE       1         
+18     장                    1526       23           8            1         
+19     ##우                  2137       IGNORE       IGNORE       1         
+20     ##람                  2383       IGNORE       IGNORE       1         
+21     씨                    1370       35           11           1         
+22     ,                    16         IGNORE       IGNORE       1         
+23     밴드                   7503       30           8            1         
+24     '                    11         35           11           1         
+25     버스터                  27884      IGNORE       IGNORE       1         
+26     ##리                  2059       IGNORE       IGNORE       1         
+27     ##드                  2343       IGNORE       IGNORE       1         
+28     '                    11         IGNORE       IGNORE       1         
+29     ,                    16         IGNORE       IGNORE       1         
+30     임                    1510       35           8            1         
+31     ##도                  2119       IGNORE       IGNORE       1         
+32     ##혁                  2551       IGNORE       IGNORE       1         
+33     씨                    1370       0            14           1         
+34     ##가                  2116       IGNORE       IGNORE       1         
+35     출전                   5419       0            23           1         
+36     ##했                  2371       IGNORE       IGNORE       1         
+37     ##다                  2062       IGNORE       IGNORE       1         
+38     .                    18         IGNORE       IGNORE       1         
+39     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 40
+  • 라벨이 할당된 토큰 수: 15
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 이날 경연에는 곽진언 씨, 김필 씨, 송유빈 군, 장우람 씨, 밴드 ' 버스터리드 ', 임도혁 씨가 출전했다.
+
+🔍 샘플 3:
+--------------------------------------------------
+Input IDs 길이: 35
+Attention Mask 길이: 35
+Labels Head 길이: 35
+Labels Deprel 길이: 35
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      최근                   3744       0            9            1         
+2      우리                   3616       0            14           1         
+3      ##는                  2259       IGNORE       IGNORE       1         
+4      과거                   4222       9            9            1         
+5      ##로                  2200       IGNORE       IGNORE       1         
+6      ##부터                 3797       IGNORE       IGNORE       1         
+7      이어져                  10121      12           27           1         
+8      ##온                  2130       IGNORE       IGNORE       1         
+9      각종                   4424       12           8            1         
+10     적폐                   13523      14           12           1         
+11     ##의                  2079       IGNORE       IGNORE       1         
+12     흔적                   7061       27           14           1         
+13     ##들이                 7285       IGNORE       IGNORE       1         
+14     세월                   4922       18           14           1         
+15     ##이                  2052       IGNORE       IGNORE       1         
+16     흘러                   5451       27           23           1         
+17     ##도                  2119       IGNORE       IGNORE       1         
+18     후손                   10965      27           9            1         
+19     ##들                  2031       IGNORE       IGNORE       1         
+20     ##에                  2170       IGNORE       IGNORE       1         
+21     ##게                  2318       IGNORE       IGNORE       1         
+22     상처                   5456       27           9            1         
+23     ##로                  2200       IGNORE       IGNORE       1         
+24     남                    723        29           27           1         
+25     ##는                  2259       IGNORE       IGNORE       1         
+26     ##다는                 4000       IGNORE       IGNORE       1         
+27     교훈                   9407       0            13           1         
+28     ##을                  2069       IGNORE       IGNORE       1         
+29     얻                    1410       0            23           1         
+30     ##었                  2359       IGNORE       IGNORE       1         
+31     ##습                  2219       IGNORE       IGNORE       1         
+32     ##니다                 3606       IGNORE       IGNORE       1         
+33     .                    18         IGNORE       IGNORE       1         
+34     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 35
+  • 라벨이 할당된 토큰 수: 14
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 최근 우리는 과거로부터 이어져온 각종 적폐의 흔적들이 세월이 흘러도 후손들에게 상처로 남는다는 교훈을 얻었습니다.
+
+🔍 샘플 4:
+--------------------------------------------------
+Input IDs 길이: 39
+Attention Mask 길이: 39
+Labels Head 길이: 39
+Labels Deprel 길이: 39
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      야권                   6803       11           9            1         
+2      ##에서                 27135      IGNORE       IGNORE       1         
+3      ##는                  2259       IGNORE       IGNORE       1         
+4      박근혜                  4655       8            8            1         
+5      대통령                  3698       11           13           1         
+6      ##까                  2299       IGNORE       IGNORE       1         
+7      ##지                  2118       IGNORE       IGNORE       1         
+8      문제                   3635       11           13           1         
+9      삼                    1238       13           23           1         
+10     ##고                  2088       IGNORE       IGNORE       1         
+11     있                    1513       35           23           1         
+12     ##지만                 3683       IGNORE       IGNORE       1         
+13     이                    1504       16           5            1         
+14     문제                   3635       25           14           1         
+15     ##는                  2259       IGNORE       IGNORE       1         
+16     박근혜                  4655       20           8            1         
+17     대통령                  3698       25           9            1         
+18     ##과                  2145       IGNORE       IGNORE       1         
+19     ##는                  2259       IGNORE       IGNORE       1         
+20     아무                   3795       23           5            1         
+21     상관                   5468       25           14           1         
+22     ##이                  2052       IGNORE       IGNORE       1         
+23     없                    1415       27           27           1         
+24     ##다는                 4000       IGNORE       IGNORE       1         
+25     것                    575        35           13           1         
+26     ##을                  2069       IGNORE       IGNORE       1         
+27     민주당                  4186       32           11           1         
+28     ##과                  2145       IGNORE       IGNORE       1         
+29     문재인                  5573       32           8            1         
+30     후보                   3733       35           14           1         
+31     ##가                  2116       IGNORE       IGNORE       1         
+32     더                    831        34           0            1         
+33     잘                    1521       35           0            1         
+34     알                    1381       0            27           1         
+35     것                    575        0            16           1         
+36     ##입니다                12190      IGNORE       IGNORE       1         
+37     .                    18         IGNORE       IGNORE       1         
+38     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 39
+  • 라벨이 할당된 토큰 수: 21
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 야권에서는 박근혜 대통령까지 문제 삼고 있지만 이 문제는 박근혜 대통령과는 아무 상관이 없다는 것을 민주당과 문재인 후보가 더 잘 알 것입니다.
+
+🔍 샘플 5:
+--------------------------------------------------
+Input IDs 길이: 51
+Attention Mask 길이: 51
+Labels Head 길이: 51
+Labels Deprel 길이: 51
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      만약                   4826       35           0            1         
+2      직장                   4804       35           14           1         
+3      ##가                  2116       IGNORE       IGNORE       1         
+4      ##입                  2372       IGNORE       IGNORE       1         
+5      ##자                  2155       IGNORE       IGNORE       1         
+6      ##가                  2116       IGNORE       IGNORE       1         
+7      근로                   4797       11           8            1         
+8      ##소득                 7625       IGNORE       IGNORE       1         
+9      외                    1462       23           9            1         
+10     ##에                  2170       IGNORE       IGNORE       1         
+11     사업소                  20786      20           11           1         
+12     ##득                  2537       IGNORE       IGNORE       1         
+13     ,                    16         IGNORE       IGNORE       1         
+14     이자                   5617       20           11           1         
+15     ,                    16         IGNORE       IGNORE       1         
+16     배당                   6464       20           11           1         
+17     ,                    16         IGNORE       IGNORE       1         
+18     임대                   5010       22           8            1         
+19     ##소득                 7625       IGNORE       IGNORE       1         
+20     등                    886        23           13           1         
+21     ##을                  2069       IGNORE       IGNORE       1         
+22     합친                   17884      26           27           1         
+23     종합                   4339       35           14           1         
+24     ##소득                 7625       IGNORE       IGNORE       1         
+25     ##이                  2052       IGNORE       IGNORE       1         
+26     7                    27         35           13           1         
+27     ##천                  2337       IGNORE       IGNORE       1         
+28     ##20                 5267       IGNORE       IGNORE       1         
+29     ##0                  2082       IGNORE       IGNORE       1         
+30     ##만                  2154       IGNORE       IGNORE       1         
+31     ##원                  2252       IGNORE       IGNORE       1         
+32     ##을                  2069       IGNORE       IGNORE       1         
+33     넘                    749        36           27           1         
+34     ##는                  2259       IGNORE       IGNORE       1         
+35     경우                   3640       0            9            1         
+36     추가                   4140       44           9            1         
+37     ##로                  2200       IGNORE       IGNORE       1         
+38     최대                   3980       44           8            1         
+39     230                  14413      0            9            1         
+40     ##만                  2154       IGNORE       IGNORE       1         
+41     ##원                  2252       IGNORE       IGNORE       1         
+42     ##까                  2299       IGNORE       IGNORE       1         
+43     ##지                  2118       IGNORE       IGNORE       1         
+44     보험료                  7104       0            14           1         
+45     ##가                  2116       IGNORE       IGNORE       1         
+46     부과                   6274       0            23           1         
+47     ##된                  2897       IGNORE       IGNORE       1         
+48     ##다                  2062       IGNORE       IGNORE       1         
+49     .                    18         IGNORE       IGNORE       1         
+50     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 51
+  • 라벨이 할당된 토큰 수: 19
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 만약 직장가입자가 근로소득 외에 사업소득, 이자, 배당, 임대소득 등을 합친 종합소득이 7천200만원을 넘는 경우 추가로 최대 230만원까지 보험료가 부과된다.
+
+🔍 샘플 6:
+--------------------------------------------------
+Input IDs 길이: 46
+Attention Mask 길이: 46
+Labels Head 길이: 46
+Labels Deprel 길이: 46
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      전문가                  4205       13           14           1         
+2      ##들이                 7285       IGNORE       IGNORE       1         
+3      초기                   5100       6            8            1         
+4      대응                   4509       9            12           1         
+5      ##의                  2079       IGNORE       IGNORE       1         
+6      중요                   3748       13           13           1         
+7      ##성                  2047       IGNORE       IGNORE       1         
+8      ##을                  2069       IGNORE       IGNORE       1         
+9      강조                   3986       42           23           1         
+10     ##하                  2205       IGNORE       IGNORE       1         
+11     ##지만                 3683       IGNORE       IGNORE       1         
+12     ,                    16         IGNORE       IGNORE       1         
+13     응급                   8376       16           8            1         
+14     처치                   20110      25           13           1         
+15     ##는                  2259       IGNORE       IGNORE       1         
+16     전문가                  4205       23           11           1         
+17     ##나                  2075       IGNORE       IGNORE       1         
+18     119                  10090      25           9            1         
+19     ##구                  2251       IGNORE       IGNORE       1         
+20     ##급                  2478       IGNORE       IGNORE       1         
+21     ##대                  2104       IGNORE       IGNORE       1         
+22     ##에                  2170       IGNORE       IGNORE       1         
+23     맡겨                   10178      26           23           1         
+24     ##야                  2275       IGNORE       IGNORE       1         
+25     한다는                  3807       29           27           1         
+26     잘못                   4389       29           27           1         
+27     ##된                  2897       IGNORE       IGNORE       1         
+28     인식                   4263       31           8            1         
+29     때문                   3624       42           9            1         
+30     ##에                  2170       IGNORE       IGNORE       1         
+31     일반인                  8012       42           14           1         
+32     ##들                  2031       IGNORE       IGNORE       1         
+33     ##은                  2073       IGNORE       IGNORE       1         
+34     여전히                  4594       42           0            1         
+35     심폐                   20091      42           13           1         
+36     ##소                  2024       IGNORE       IGNORE       1         
+37     ##생                  2065       IGNORE       IGNORE       1         
+38     ##술                  2072       IGNORE       IGNORE       1         
+39     ##을                  2069       IGNORE       IGNORE       1         
+40     꺼리                   14168      0            23           1         
+41     ##고                  2088       IGNORE       IGNORE       1         
+42     있                    1513       0            23           1         
+43     ##다                  2062       IGNORE       IGNORE       1         
+44     .                    18         IGNORE       IGNORE       1         
+45     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 46
+  • 라벨이 할당된 토큰 수: 19
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 전문가들이 초기 대응의 중요성을 강조하지만, 응급 처치는 전문가나 119구급대에 맡겨야 한다는 잘못된 인식 때문에 일반인들은 여전히 심폐소생술을 꺼리고 있다.
+
+🔍 샘플 7:
+--------------------------------------------------
+Input IDs 길이: 29
+Attention Mask 길이: 29
+Labels Head 길이: 29
+Labels Deprel 길이: 29
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      검찰                   4153       0            14           1         
+2      ##은                  2073       IGNORE       IGNORE       1         
+3      재판                   4503       0            9            1         
+4      ##과                  2145       IGNORE       IGNORE       1         
+5      ##정                  2287       IGNORE       IGNORE       1         
+6      ##에서                 27135      IGNORE       IGNORE       1         
+7      전                    1537       10           8            1         
+8      전                    1537       10           5            1         
+9      대통령                  3698       12           8            1         
+10     일가                   10187      15           14           1         
+11     ##가                  2116       IGNORE       IGNORE       1         
+12     숨겨                   8524       17           27           1         
+13     ##놓                  2850       IGNORE       IGNORE       1         
+14     ##은                  2073       IGNORE       IGNORE       1         
+15     재산                   4876       25           14           1         
+16     ##이                  2052       IGNORE       IGNORE       1         
+17     아직                   3919       25           0            1         
+18     ##도                  2119       IGNORE       IGNORE       1         
+19     수백                   6843       23           5            1         
+20     ##억                  2028       IGNORE       IGNORE       1         
+21     원                    1478       25           9            1         
+22     ##에                  2170       IGNORE       IGNORE       1         
+23     달한다                  8897       0            24           1         
+24     ##고                  2088       IGNORE       IGNORE       1         
+25     밝혔                   3705       0            23           1         
+26     ##다                  2062       IGNORE       IGNORE       1         
+27     .                    18         IGNORE       IGNORE       1         
+28     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 29
+  • 라벨이 할당된 토큰 수: 13
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 검찰은 재판과정에서 전 전 대통령 일가가 숨겨놓은 재산이 아직도 수백억 원에 달한다고 밝혔다.
+
+🔍 샘플 8:
+--------------------------------------------------
+Input IDs 길이: 30
+Attention Mask 길이: 30
+Labels Head 길이: 30
+Labels Deprel 길이: 30
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      우선                   4174       26           0            1         
+2      열차                   7813       5            8            1         
+3      증                    1582       7            8            1         
+4      ##차                  2232       IGNORE       IGNORE       1         
+5      시기                   4342       16           13           1         
+6      ##를                  2138       IGNORE       IGNORE       1         
+7      애초                   7998       10           8            1         
+8      계획                   3716       13           27           1         
+9      ##한                  2470       IGNORE       IGNORE       1         
+10     2018                 5787       16           9            1         
+11     ##년                  2440       IGNORE       IGNORE       1         
+12     ##에서                 27135      IGNORE       IGNORE       1         
+13     1                    21         16           13           1         
+14     ##년                  2440       IGNORE       IGNORE       1         
+15     앞당겨                  16477      26           23           1         
+16     2017                 5668       26           9            1         
+17     ##년                  2440       IGNORE       IGNORE       1         
+18     ##까                  2299       IGNORE       IGNORE       1         
+19     ##지                  2118       IGNORE       IGNORE       1         
+20     70                   4531       26           13           1         
+21     ##량                  2199       IGNORE       IGNORE       1         
+22     ##을                  2069       IGNORE       IGNORE       1         
+23     늘리                   6245       0            24           1         
+24     ##기                  2015       IGNORE       IGNORE       1         
+25     ##로                  2200       IGNORE       IGNORE       1         
+26     했                    1902       0            23           1         
+27     ##다                  2062       IGNORE       IGNORE       1         
+28     .                    18         IGNORE       IGNORE       1         
+29     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 30
+  • 라벨이 할당된 토큰 수: 13
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 우선 열차 증차 시기를 애초 계획한 2018년에서 1년 앞당겨 2017년까지 70량을 늘리기로 했다.
+
+🔍 샘플 9:
+--------------------------------------------------
+Input IDs 길이: 35
+Attention Mask 길이: 35
+Labels Head 길이: 35
+Labels Deprel 길이: 35
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      그                    636        6            14           1         
+2      ##는                  2259       IGNORE       IGNORE       1         
+3      가까스로                 16938      6            0            1         
+4      구조                   3962       10           23           1         
+5      ##돼                  2811       IGNORE       IGNORE       1         
+6      응급실                  15873      10           9            1         
+7      ##로                  2200       IGNORE       IGNORE       1         
+8      옮겨졌                  24096      0            23           1         
+9      ##고                  2088       IGNORE       IGNORE       1         
+10     이날                   3814       0            9            1         
+11     바                    1118       0            9            1         
+12     ##타                  2256       IGNORE       IGNORE       1         
+13     ##클                  2583       IGNORE       IGNORE       1         
+14     ##랑                  2379       IGNORE       IGNORE       1         
+15     ##에서                 27135      IGNORE       IGNORE       1         
+16     ##는                  2259       IGNORE       IGNORE       1         
+17     이번                   3686       22           8            1         
+18     동시                   4213       20           8            1         
+19     다발                   15477      22           8            1         
+20     테러                   6593       0            9            1         
+21     ##에서                 27135      IGNORE       IGNORE       1         
+22     가장                   3676       25           0            1         
+23     많                    1039       30           27           1         
+24     ##은                  2073       IGNORE       IGNORE       1         
+25     100                  3911       28           8            1         
+26     ##여                  2173       IGNORE       IGNORE       1         
+27     명의                   8918       30           12           1         
+28     사상자                  21412      0            14           1         
+29     ##가                  2116       IGNORE       IGNORE       1         
+30     발생                   3888       0            23           1         
+31     ##했                  2371       IGNORE       IGNORE       1         
+32     ##다                  2062       IGNORE       IGNORE       1         
+33     .                    18         IGNORE       IGNORE       1         
+34     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 35
+  • 라벨이 할당된 토큰 수: 17
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 그는 가까스로 구조돼 응급실로 옮겨졌고 이날 바타클랑에서는 이번 동시 다발 테러에서 가장 많은 100여 명의 사상자가 발생했다.
+
+🔍 샘플 10:
+--------------------------------------------------
+Input IDs 길이: 45
+Attention Mask 길이: 45
+Labels Head 길이: 45
+Labels Deprel 길이: 45
+
+토큰별 상세 정보:
+Index  Token                Token ID   Head Label   Deprel Label Attention 
+--------------------------------------------------------------------------------
+0      [CLS]                0          IGNORE       IGNORE       1         
+1      섬                    1264       4            9            1         
+2      ##에                  2170       IGNORE       IGNORE       1         
+3      갇힌                   18483      5            27           1         
+4      채                    1643       15           9            1         
+5      홍                    1932       10           12           1         
+6      ##씨                  2483       IGNORE       IGNORE       1         
+7      ##의                  2079       IGNORE       IGNORE       1         
+8      염전                   31359      15           9            1         
+9      ##에서                 27135      IGNORE       IGNORE       1         
+10     수년                   9158       15           9            1         
+11     ##간                  2366       IGNORE       IGNORE       1         
+12     일                    1507       17           27           1         
+13     ##하                  2205       IGNORE       IGNORE       1         
+14     ##던                  2414       IGNORE       IGNORE       1         
+15     김                    648        19           8            1         
+16     ##씨                  2483       IGNORE       IGNORE       1         
+17     등                    886        0            14           1         
+18     ##은                  2073       IGNORE       IGNORE       1         
+19     김                    648        30           14           1         
+20     ##씨                  2483       IGNORE       IGNORE       1         
+21     ##가                  2116       IGNORE       IGNORE       1         
+22     서울                   3671       26           9            1         
+23     ##에                  2170       IGNORE       IGNORE       1         
+24     있                    1513       29           27           1         
+25     ##는                  2259       IGNORE       IGNORE       1         
+26     어머니                  4226       30           9            1         
+27     ##에                  2170       IGNORE       IGNORE       1         
+28     ##게                  2318       IGNORE       IGNORE       1         
+29     보낸                   5998       32           27           1         
+30     편지                   5318       36           14           1         
+31     ##가                  2116       IGNORE       IGNORE       1         
+32     경찰                   3858       36           9            1         
+33     ##에                  2170       IGNORE       IGNORE       1         
+34     전달                   4535       0            23           1         
+35     ##돼                  2811       IGNORE       IGNORE       1         
+36     2013                 4910       40           8            1         
+37     ##년                  2440       IGNORE       IGNORE       1         
+38     2                    22         0            9            1         
+39     ##월                  2429       IGNORE       IGNORE       1         
+40     구출                   18087      0            23           1         
+41     ##됐                  2367       IGNORE       IGNORE       1         
+42     ##다                  2062       IGNORE       IGNORE       1         
+43     .                    18         IGNORE       IGNORE       1         
+44     [SEP]                2          IGNORE       IGNORE       1         
+
+📊 샘플 통계:
+  • 총 토큰 수: 45
+  • 라벨이 할당된 토큰 수: 20
+  • 특수 토큰 수: 0
+  • 패딩 토큰 수: 0
+  • 복원된 텍스트: 섬에 갇힌 채 홍씨의 염전에서 수년간 일하던 김씨 등은 김씨가 서울에 있는 어머니에게 보낸 편지가 경찰에 전달돼 2013년 2월 구출됐다.
+
+
+📈 전체 데이터셋 통계:
+================================================================================
+토큰 길이 통계:
+  • 평균 길이: 27.36
+  • 최소 길이: 9
+  • 최대 길이: 82
+  • 중간값: 23.00
+
+Head 라벨 분포:
+  • Head ID 0: 31795개
+  • Head ID 3: 448개
+  • Head ID 4: 1808개
+  • Head ID 5: 2301개
+  • Head ID 6: 2747개
+  • Head ID 7: 3229개
+  • Head ID 8: 3542개
+  • Head ID 9: 3732개
+  • Head ID 10: 3639개
+  • Head ID 11: 3511개
+  • Head ID 12: 3315개
+  • Head ID 13: 3050개
+  • Head ID 14: 2901개
+  • Head ID 15: 2753개
+  • Head ID 16: 2537개
+  • Head ID 17: 2496개
+  • Head ID 18: 2225개
+  • Head ID 19: 2249개
+  • Head ID 20: 2057개
+  • Head ID 21: 2156개
+  • Head ID 22: 1957개
+  • Head ID 23: 1897개
+  • Head ID 24: 1790개
+  • Head ID 25: 1765개
+  • Head ID 26: 1721개
+  • Head ID 27: 1536개
+  • Head ID 28: 1537개
+  • Head ID 29: 1379개
+  • Head ID 30: 1300개
+  • Head ID 31: 1297개
+  • Head ID 32: 1169개
+  • Head ID 33: 1208개
+  • Head ID 34: 1079개
+  • Head ID 35: 1115개
+  • Head ID 36: 948개
+  • Head ID 37: 963개
+  • Head ID 38: 797개
+  • Head ID 39: 801개
+  • Head ID 40: 709개
+  • Head ID 41: 617개
+  • Head ID 42: 670개
+  • Head ID 43: 565개
+  • Head ID 44: 546개
+  • Head ID 45: 420개
+  • Head ID 46: 412개
+  • Head ID 47: 397개
+  • Head ID 48: 375개
+  • Head ID 49: 343개
+  • Head ID 50: 276개
+  • Head ID 51: 264개
+  • Head ID 52: 249개
+  • Head ID 53: 217개
+  • Head ID 54: 204개
+  • Head ID 55: 166개
+  • Head ID 56: 166개
+  • Head ID 57: 153개
+  • Head ID 58: 146개
+  • Head ID 59: 109개
+  • Head ID 60: 82개
+  • Head ID 61: 102개
+  • Head ID 62: 67개
+  • Head ID 63: 74개
+  • Head ID 64: 72개
+  • Head ID 65: 59개
+  • Head ID 66: 60개
+  • Head ID 67: 35개
+  • Head ID 68: 44개
+  • Head ID 69: 31개
+  • Head ID 70: 34개
+  • Head ID 71: 18개
+  • Head ID 72: 16개
+  • Head ID 73: 9개
+  • Head ID 74: 14개
+  • Head ID 75: 4개
+  • Head ID 76: 2개
+  • Head ID 77: 12개
+  • Head ID 78: 2개
+
+Deprel 라벨 분포:
+  • AP (ID: 0): 6638개
+  • AP_AJT (ID: 1): 2개
+  • AP_CMP (ID: 2): 1개
+  • AP_MOD (ID: 3): 59개
+  • DP (ID: 5): 1994개
+  • IP (ID: 6): 27개
+  • L (ID: 7): 3개
+  • NP (ID: 8): 23902개
+  • NP_AJT (ID: 9): 17552개
+  • NP_CMP (ID: 10): 408개
+  • NP_CNJ (ID: 11): 3945개
+  • NP_MOD (ID: 12): 3450개
+  • NP_OBJ (ID: 13): 8531개
+  • NP_SBJ (ID: 14): 13412개
+  • R (ID: 15): 1개
+  • VNP (ID: 16): 2550개
+  • VNP_AJT (ID: 17): 37개
+  • VNP_CMP (ID: 18): 131개
+  • VNP_CNJ (ID: 19): 1개
+  • VNP_MOD (ID: 20): 854개
+  • VNP_OBJ (ID: 21): 18개
+  • VNP_SBJ (ID: 22): 11개
+  • VP (ID: 23): 16786개
+  • VP_AJT (ID: 24): 882개
+  • VP_CMP (ID: 25): 330개
+  • VP_CNJ (ID: 26): 37개
+  • VP_MOD (ID: 27): 12210개
+  • VP_OBJ (ID: 28): 279개
+  • VP_SBJ (ID: 29): 338개
+  • X (ID: 30): 26개
+  • X_AJT (ID: 31): 41개
+  • X_CMP (ID: 32): 2개
+  • X_CNJ (ID: 33): 2개
+  • X_MOD (ID: 34): 2개
+  • X_OBJ (ID: 35): 12개
+  • X_SBJ (ID: 36): 17개
