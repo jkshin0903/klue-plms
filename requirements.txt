@@ -6,8 +6,10 @@ torchaudio==2.1.2+cu118
 torchvision==0.16.2+cu118
 
 # Hugging Face 생태계
-transformers==4.57.0
-tokenizers==0.22.1
+# transformers==4.57.0
+transformers==4.55.4
+# tokenizers==0.22.1
+tokenizers==0.21.4
 datasets==4.2.0
 huggingface-hub==0.35.3
 
