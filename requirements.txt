@@ -1,0 +1,25 @@
+# KLUE 태스크 실행을 위한 최소 필수 패키지들
+
+# 핵심 ML/DL 프레임워크
+torch==2.1.2+cu118
+torchaudio==2.1.2+cu118
+torchvision==0.16.2+cu118
+
+# Hugging Face 생태계
+transformers==4.57.0
+tokenizers==0.22.1
+datasets==4.2.0
+huggingface-hub==0.35.3
+
+# 평가 지표
+evaluate==0.4.6
+seqeval==1.2.2
+
+# 데이터 처리
+numpy==1.25.2
+pandas==2.3.2
+
+# 기타 필수 패키지
+tqdm==4.67.1
+filelock==3.13.1
+safetensors==0.6.2
