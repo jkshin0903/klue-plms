@@ -176,8 +176,8 @@ def main() -> None:
         compute_metrics=compute_metrics,
     )
 
-    trainer.train()
-    trainer.evaluate()
+    # trainer.train()
+    # trainer.evaluate()
 
 
 if __name__ == "__main__":
