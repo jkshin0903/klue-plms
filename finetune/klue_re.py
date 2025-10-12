@@ -38,12 +38,13 @@ from transformers import (
     TrainingArguments,
 )
 import evaluate
-from utils.re_dataset_saver import save_tokenized_dataset_info
+# from utils.re_dataset_saver import save_tokenized_dataset_info
 
 # GPU 설정
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"  # 다른사람이 실수로 접속해서 메모리 초과 되서 끊기는 것 방지 가능
-os.environ['TORCH_USE_CUDA_DSA'] = "1"
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"  # 디버그가 아니면 0으로 두어 성능/메모리 영향 최소화
+os.environ['TORCH_USE_CUDA_DSA'] = "1"     # DSA는 디버그 전용, 오버헤드 큼
+os.environ['TRANSFORMERS_NO_TF'] = "1"     # TensorFlow가 GPU 메모리 선점하지 않도록 비활성화
 
 device = torch.device(f'cuda:0')  # VISIBLE DEVICES 중 0번째 사용할 시
 torch.cuda.set_device(device)
@@ -104,7 +105,7 @@ def insert_entity_markers(
 def main() -> None:
     dataset = load_dataset("klue", "re")
 
-    model_name = "klue/roberta-large"
+    model_name = "klue/roberta-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     # 추가 마커 등록: 구분 토큰으로 취급되도록 구성합니다.
@@ -117,10 +118,7 @@ def main() -> None:
         model_name,
         num_labels=num_labels,
         problem_type="single_label_classification",
-        attn_implementation="eager",  # 어텐션 맵 출력을 위해 eager 구현 사용
     )
-    # 어텐션 맵 출력 활성화 (추론 시 output_attentions=True로도 제어 가능)
-    model.config.output_attentions = True
     model.resize_token_embeddings(len(tokenizer))
 
     def preprocess(examples: Dict[str, Any]) -> Dict[str, Any]:
@@ -128,7 +126,11 @@ def main() -> None:
             insert_entity_markers(s, se, oe)  # type: ignore[arg-type]
             for s, se, oe in zip(examples["sentence"], examples["subject_entity"], examples["object_entity"])
         ]
-        enc = tokenizer(texts, truncation=True, return_attention_mask=True)
+        enc = tokenizer(
+            texts,
+            truncation=True,
+            return_attention_mask=True
+        )
         enc["labels"] = examples["label"] # loss 계산, backprop 과정에서 사용될 라벨 지정
         return enc
 
@@ -140,7 +142,7 @@ def main() -> None:
     )
 
     # 토크나이징된 데이터셋 내용을 파일로 저장
-    save_tokenized_dataset_info(tokenized, tokenizer, label_names)
+    # save_tokenized_dataset_info(tokenized, tokenizer, label_names)
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
@@ -160,13 +162,13 @@ def main() -> None:
     training_args = TrainingArguments(
         output_dir="./results/klue-re",
         logging_dir="./results/klue-re/logs",
-        eval_strategy="epoch",  # evaluation_strategy → eval_strategy로 변경
+        eval_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=2,
         learning_rate=2e-5,
         weight_decay=0.01,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=16,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
         num_train_epochs=3,
         load_best_model_at_end=True,
         metric_for_best_model="f1_macro",
@@ -183,8 +185,8 @@ def main() -> None:
         compute_metrics=compute_metrics,
     )
 
-    # trainer.train()
-    # trainer.evaluate()
+    trainer.train()
+    trainer.evaluate()
 
 
 if __name__ == "__main__":
