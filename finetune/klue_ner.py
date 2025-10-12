@@ -57,7 +57,7 @@ def main() -> None:
     dataset = load_dataset("klue", "ner")
 
     # 토크나이저 및 모델 준비
-    model_name = "klue/roberta-large"
+    model_name = "klue/roberta-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     # NER 라벨 이름 목록
@@ -67,10 +67,7 @@ def main() -> None:
     model = AutoModelForTokenClassification.from_pretrained(
         model_name,
         num_labels=num_labels,
-        attn_implementation="eager",  # 어텐션 맵 출력을 위해 eager 구현 사용
     )
-    # 어텐션 맵 출력 활성화 (추론 시 output_attentions=True로도 제어 가능)
-    model.config.output_attentions = True
 
     # 문자 단위 토큰에 맞춘 정렬/매핑: offset_mapping을 이용하여 서브워드 ↔ 원문 문자 위치를 정렬합니다.
     def tokenize_and_align_labels(examples: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,8 +122,8 @@ def main() -> None:
 
     data_collator = DataCollatorForTokenClassification(
         tokenizer=tokenizer,
-        padding='longest',
-        pad_to_multiple_of=8,
+        padding='max_length',
+        max_length=tokenizer.model_max_length,
     )
 
     # seqeval 기반 평가 지표
@@ -162,7 +159,7 @@ def main() -> None:
     training_args = TrainingArguments(
         output_dir="./results/klue-ner",
         logging_dir="./results/klue-ner/logs",
-        eval_strategy="epoch",  # evaluation_strategy → eval_strategy로 변경
+        eval_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=2,
         learning_rate=2e-5,
@@ -173,10 +170,6 @@ def main() -> None:
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         report_to=["none"],
-        fp16=True,
-        gradient_checkpointing=True,
-        eval_accumulation_steps=64,
-        # prediction_loss_only=True,  # 지표 수집 불필요할 때만 활성화
     )
 
     trainer = Trainer(
