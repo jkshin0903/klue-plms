@@ -147,13 +147,18 @@ def main() -> None:
             true_labels.append(true_labels_row)
             true_predictions.append(true_preds_row)
 
-        results = seqeval.compute(predictions=true_predictions, references=true_labels)
-        # 반환 키: precision, recall, f1, accuracy
+        results = seqeval.compute(
+            predictions=true_predictions,
+            references=true_labels,
+            scheme='IOB2',
+            mode="strict",
+        )
+        
         return {
-            "precision": float(results.get("precision", 0.0)),
-            "recall": float(results.get("recall", 0.0)),
-            "f1": float(results.get("f1", 0.0)),
-            "accuracy": float(results.get("accuracy", 0.0)),
+            "precision": float(results['overall_precision']),
+            "recall": float(results['overall_recall']),
+            "f1": float(results['overall_f1']),
+            "accuracy": float(results['overall_accuracy']),
         }
 
     training_args = TrainingArguments(
