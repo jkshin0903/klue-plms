@@ -186,6 +186,9 @@ class RobertaBiaffineDependencyParser(PreTrainedModel):
 
         self.arc_biaffine = Biaffine(config.mlp_arc, out_features=1)
         self.rel_biaffine = Biaffine(config.mlp_rel, out_features=config.num_relations)
+        
+        # 그래디언트 체크포인팅 활성화 (메모리 절약)
+        self.encoder.gradient_checkpointing_enable()
 
     def forward(
         self,
@@ -261,6 +264,8 @@ def build_labels_and_align(
     enc = tokenizer(
         words,
         truncation=True,
+        padding="max_length",
+        max_length=tokenizer.model_max_length,
         is_split_into_words=True,
         return_attention_mask=True,
     )
@@ -366,24 +371,26 @@ def main() -> None:
         def __call__(self, features):
             # input_ids와 attention_mask를 함께 패딩 처리
             batch = {}
+            max_len = self.tokenizer.model_max_length
+
             padded = self.tokenizer.pad(
                 [{"input_ids": f["input_ids"], "attention_mask": f["attention_mask"]} for f in features],
-                padding=True,
+                padding="max_length",
+                max_length=max_len,
                 return_tensors="pt"
             )
             batch["input_ids"] = padded["input_ids"]
             batch["attention_mask"] = padded["attention_mask"]
             
-            # labels_head와 labels_deprel은 수동으로 패딩 처리
-            max_len = max(len(f["labels_head"]) for f in features)
+            # labels_head와 labels_deprel은 고정 길이로 패딩 처리
             batch["labels_head"] = torch.tensor([
                 f["labels_head"] + [IGNORE_INDEX] * (max_len - len(f["labels_head"]))
                 for f in features
-            ])
+            ], dtype=torch.long)
             batch["labels_deprel"] = torch.tensor([
                 f["labels_deprel"] + [IGNORE_INDEX] * (max_len - len(f["labels_deprel"]))
                 for f in features
-            ])
+            ], dtype=torch.long)
             
             return batch
 
@@ -421,8 +428,10 @@ def main() -> None:
         save_total_limit=2,
         learning_rate=3e-5,
         weight_decay=0.01,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
+        per_device_train_batch_size=4,  # 메모리 절약을 위해 배치 크기 감소
+        per_device_eval_batch_size=4,
+        gradient_accumulation_steps=2,  # 메모리 절약을 위해 그래디언트 누적
+        fp16=True,  # 혼합 정밀도로 메모리 절약
         num_train_epochs=5,
         load_best_model_at_end=True,
         metric_for_best_model="las",
