@@ -1,5 +1,5 @@
 """
-KLUE/roberta-large와 Hugging Face Transformers Trainer를 사용한 KLUE-RE 파인튜닝 스크립트.
+KLUE/roberta-base와 Hugging Face Transformers Trainer를 사용한 KLUE-RE 파인튜닝 스크립트.
 
 이 스크립트는 datasets.load_dataset("klue", "re")로 KLUE 관계 추출(RE) 데이터셋을 로드하고,
 주어/목적어 엔터티 스팬 주위에 마커를 삽입한 텍스트를 입력으로 사용하여
@@ -20,7 +20,7 @@ KLUE/roberta-large와 Hugging Face Transformers Trainer를 사용한 KLUE-RE 파
 참고 자료(References):
 - KLUE benchmark: https://github.com/KLUE-benchmark/KLUE/tree/main/klue_benchmark
 - KLUE dataset card: https://huggingface.co/datasets/klue/klue
-- Model card (klue/roberta-large): https://huggingface.co/klue/roberta-large
+- Model card (klue/roberta-base): https://huggingface.co/klue/roberta-base
 - Transformers text classification: https://huggingface.co/docs/transformers/tasks/sequence_classification
 """
 
