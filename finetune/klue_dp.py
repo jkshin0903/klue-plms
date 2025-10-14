@@ -47,6 +47,7 @@ from transformers import (
     DataCollatorWithPadding,
     Trainer,
     TrainingArguments,
+    EarlyStoppingCallback,
 )
 import evaluate
 
@@ -424,6 +425,7 @@ def main() -> None:
         per_device_eval_batch_size=8,
         num_train_epochs=5,
         load_best_model_at_end=True,
+        metric_for_best_model="las",
         report_to=["none"],
     )
 
@@ -467,6 +469,7 @@ def main() -> None:
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=3, early_stopping_threshold=0.0)],
     )
 
     trainer.train()

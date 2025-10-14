@@ -36,6 +36,7 @@ from transformers import (
     DataCollatorWithPadding,
     Trainer,
     TrainingArguments,
+    EarlyStoppingCallback,
 )
 import evaluate
 # from utils.re_dataset_saver import save_tokenized_dataset_info
@@ -187,6 +188,7 @@ def main() -> None:
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=3, early_stopping_threshold=0.0)],
     )
 
     trainer.train()

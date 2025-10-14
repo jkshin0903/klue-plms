@@ -38,6 +38,7 @@ from transformers import (
     DataCollatorForTokenClassification,
     Trainer,
     TrainingArguments,
+    EarlyStoppingCallback,
 )
 import evaluate
 # from utils.ner_dataset_saver import save_tokenized_dataset_info
@@ -61,13 +62,13 @@ def main() -> None:
         "validation": f"{dataset_path}validation-00000-of-00001.parquet",
     })
 
-    # 토크나이저 및 모델 준비
-    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-    model = AutoModelForTokenClassification.from_pretrained(model_path, num_labels=num_labels)
-
     # NER 라벨 이름 목록
     label_names: List[str] = dataset["train"].features["ner_tags"].feature.names  # type: ignore[attr-defined]
     num_labels = len(label_names)
+
+    # 토크나이저 및 모델 준비 (num_labels 계산 후)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+    model = AutoModelForTokenClassification.from_pretrained(model_path, num_labels=num_labels)
 
     # 문자 단위 토큰에 맞춘 정렬/매핑: offset_mapping을 이용하여 서브워드 ↔ 원문 문자 위치를 정렬합니다.
     def tokenize_and_align_labels(examples: Dict[str, Any]) -> Dict[str, Any]:
@@ -185,6 +186,7 @@ def main() -> None:
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=3, early_stopping_threshold=0.0)],
     )
 
     trainer.train()
