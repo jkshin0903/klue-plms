@@ -142,7 +142,7 @@ class BiaffineParserConfig(PretrainedConfig):
 
     def __init__(
         self,
-        encoder_name: str = "klue/roberta-base",
+        encoder_name: str,
         mlp_arc: int = 512,
         mlp_rel: int = 256,
         num_relations: int = 40,
@@ -295,7 +295,13 @@ def build_labels_and_align(
 
 
 def main() -> None:
-    dataset = load_dataset("klue", "dp")
+    dataset_path = "/mnt/nvme03/huggingface/datasets/Klue/dp/"
+    model_path = "/mnt/nvme01/huggingface/models/Klue/roberta-base/"
+
+    dataset = load_dataset('parquet', data_files={
+        "train": f"{dataset_path}train-00000-of-00001.parquet",
+        "validation": f"{dataset_path}validation-00000-of-00001.parquet",
+    })
 
     # 의존관계 라벨 이름/개수 추출
     rel_feature = dataset["train"].features["deprel"]
@@ -322,10 +328,9 @@ def main() -> None:
     deprel_to_id = {label: idx for idx, label in enumerate(rel_names)}
     print(f"Deprel to ID mapping: {deprel_to_id}")
 
-    model_name = "klue/roberta-base"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
 
-    config = BiaffineParserConfig(encoder_name=model_name, num_relations=num_relations)
+    config = BiaffineParserConfig(encoder_name=model_path, num_relations=num_relations)
     model = RobertaBiaffineDependencyParser(config)
 
     def preprocess(examples: Dict[str, Any]) -> Dict[str, Any]:

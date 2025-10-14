@@ -53,21 +53,21 @@ torch.cuda.set_device(device)
 
 
 def main() -> None:
-    # 데이터셋 로드
-    dataset = load_dataset("klue", "ner")
+    dataset_path = "/mnt/nvme03/huggingface/datasets/Klue/ner/"
+    model_path = "/mnt/nvme01/huggingface/models/Klue/roberta-base/"
+
+    dataset = load_dataset("parquet", data_files={
+        "train": f"{dataset_path}train-00000-of-00001.parquet",
+        "validation": f"{dataset_path}validation-00000-of-00001.parquet",
+    })
 
     # 토크나이저 및 모델 준비
-    model_name = "klue/roberta-base"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+    model = AutoModelForTokenClassification.from_pretrained(model_path, num_labels=num_labels)
 
     # NER 라벨 이름 목록
     label_names: List[str] = dataset["train"].features["ner_tags"].feature.names  # type: ignore[attr-defined]
     num_labels = len(label_names)
-
-    model = AutoModelForTokenClassification.from_pretrained(
-        model_name,
-        num_labels=num_labels,
-    )
 
     # 문자 단위 토큰에 맞춘 정렬/매핑: offset_mapping을 이용하여 서브워드 ↔ 원문 문자 위치를 정렬합니다.
     def tokenize_and_align_labels(examples: Dict[str, Any]) -> Dict[str, Any]:

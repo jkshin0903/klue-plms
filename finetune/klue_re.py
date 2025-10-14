@@ -103,19 +103,23 @@ def insert_entity_markers(
 
 
 def main() -> None:
-    dataset = load_dataset("klue", "re")
+    dataset_path = "/mnt/nvme03/huggingface/datasets/Klue/re/"
+    model_path = "/mnt/nvme01/huggingface/models/Klue/roberta-base/"
 
-    model_name = "klue/roberta-base"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-
-    # 추가 마커 등록: 구분 토큰으로 취급되도록 구성합니다.
-    tokenizer.add_special_tokens({"additional_special_tokens": SPECIAL_TOKENS})
+    dataset = load_dataset('parquet', data_files={
+        "train": f"{dataset_path}train-00000-of-00001.parquet",
+        "validation": f"{dataset_path}validation-00000-of-00001.parquet",
+    })
 
     label_names: List[str] = dataset["train"].features["label"].names  # type: ignore[attr-defined]
     num_labels = len(label_names)
 
+    # 추가 마커 등록: 구분 토큰으로 취급되도록 구성합니다.
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+    tokenizer.add_special_tokens({"additional_special_tokens": SPECIAL_TOKENS})
+
     model = AutoModelForSequenceClassification.from_pretrained(
-        model_name,
+        model_path,
         num_labels=num_labels,
         problem_type="single_label_classification",
     )
