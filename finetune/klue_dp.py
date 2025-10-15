@@ -143,7 +143,7 @@ class BiaffineParserConfig(PretrainedConfig):
 
     def __init__(
         self,
-        encoder_name: str,
+        encoder_name: str = "klue/roberta-base",
         mlp_arc: int = 512,
         mlp_rel: int = 256,
         num_relations: int = 40,
@@ -260,12 +260,13 @@ def build_labels_and_align(
     heads: List[int],
     deprels: List[str],
     deprel_to_id: Dict[str, int],
+    max_length: int,
 ) -> Dict[str, Any]:
     enc = tokenizer(
         words,
         truncation=True,
         padding="max_length",
-        max_length=tokenizer.model_max_length,
+        max_length=max_length,  # 메모리 절약을 위해 지정된 길이로 제한
         is_split_into_words=True,
         return_attention_mask=True,
     )
@@ -303,6 +304,9 @@ def build_labels_and_align(
 def main() -> None:
     dataset_path = "/mnt/nvme03/huggingface/datasets/Klue/dp/"
     model_path = "/mnt/nvme01/huggingface/models/Klue/roberta-base/"
+    
+    # 메모리 절약을 위한 최대 시퀀스 길이 설정
+    model_max_len = 128
 
     dataset = load_dataset('parquet', data_files={
         "train": f"{dataset_path}train-00000-of-00001.parquet",
@@ -311,8 +315,6 @@ def main() -> None:
 
     # 의존관계 라벨 이름/개수 추출
     rel_feature = dataset["train"].features["deprel"]
-    print(f"Deprel feature type: {type(rel_feature)}")
-    print(f"Deprel feature: {rel_feature}")
     
     # deprel이 Value 타입인 경우 고유값들을 추출
     if hasattr(rel_feature, 'names'):
@@ -328,11 +330,9 @@ def main() -> None:
         unique_deprels = sorted(list(set(all_deprels)))
         num_relations = len(unique_deprels)
         rel_names = unique_deprels
-        print(f"Unique deprel values: {unique_deprels}")
     
     # 문자열 라벨을 정수 ID로 매핑하는 딕셔너리 생성
     deprel_to_id = {label: idx for idx, label in enumerate(rel_names)}
-    print(f"Deprel to ID mapping: {deprel_to_id}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
 
@@ -347,7 +347,7 @@ def main() -> None:
             "labels_deprel": []
         }
         for words, heads, deprels in zip(examples["word_form"], examples["head"], examples["deprel"]):
-            enc = build_labels_and_align(tokenizer, words, heads, deprels, deprel_to_id)
+            enc = build_labels_and_align(tokenizer, words, heads, deprels, deprel_to_id, model_max_len)
             batch_enc["input_ids"].append(enc["input_ids"])
             batch_enc["attention_mask"].append(enc["attention_mask"])
             batch_enc["labels_head"].append(enc["labels_head"])
@@ -365,13 +365,14 @@ def main() -> None:
     # save_tokenized_dataset_info(tokenized, tokenizer, rel_names)
 
     class CustomDataCollator:
-        def __init__(self, tokenizer):
+        def __init__(self, tokenizer, max_length):
             self.tokenizer = tokenizer
+            self.max_length = max_length
             
         def __call__(self, features):
             # input_ids와 attention_mask를 함께 패딩 처리
             batch = {}
-            max_len = self.tokenizer.model_max_length
+            max_len = self.max_length  # 메모리 절약을 위해 지정된 길이로 제한
 
             padded = self.tokenizer.pad(
                 [{"input_ids": f["input_ids"], "attention_mask": f["attention_mask"]} for f in features],
@@ -394,30 +395,51 @@ def main() -> None:
             
             return batch
 
-    data_collator = CustomDataCollator(tokenizer)
+    data_collator = CustomDataCollator(tokenizer, model_max_len)
 
     uas = evaluate.load("accuracy")  # proxy for UAS using head index equality
     las = evaluate.load("accuracy")  # proxy for LAS using both head and label equality
 
     def compute_metrics(p: Any) -> Dict[str, float]:
-        arc_logits, rel_logits = p.predictions
-        arc_pred = arc_logits.argmax(-1)
+        arc_logits, rel_logits = p.predictions  # numpy arrays
+        
+        # 문제: p.predictions는 넘파이 배열이지만 pick_rel_logits_for_heads는 토치 텐서를 기대
+        # 해결: 넘파이 배열을 토치 텐서로 변환하여 .device 속성 접근 가능하게 함
+        arc_logits_t = torch.from_numpy(arc_logits)
+        rel_logits_t = torch.from_numpy(rel_logits)
+        
+        arc_pred = arc_logits_t.argmax(-1)
         # 관계 라벨 예측: 예측된 head 위치에서 라벨 로짓 선택(고급 인덱싱 사용)
-        rel_logits_at_head = pick_rel_logits_for_heads(rel_logits, arc_pred)
+        rel_logits_at_head = pick_rel_logits_for_heads(rel_logits_t, arc_pred)
         rel_pred = rel_logits_at_head.argmax(-1)
 
-        mask = (p.label_ids["labels_head"] != IGNORE_INDEX)
-        gold_head, gold_rel = p.label_ids["labels_head"], p.label_ids["labels_deprel"]
+        # 라벨 텐서 준비
+        labels_head_t = p.label_ids["labels_head"]
+        labels_deprel_t = p.label_ids["labels_deprel"]
+        if not torch.is_tensor(labels_head_t):
+            labels_head_t = torch.as_tensor(labels_head_t)
+        if not torch.is_tensor(labels_deprel_t):
+            labels_deprel_t = torch.as_tensor(labels_deprel_t)
 
-        # 원소 수준 마스크를 적용하여 1차원으로 평탄화하고 지표를 계산합니다.
-        pred_head_f, head_gold_f = pred_head[mask], gold_head[mask]
-        uas_val = float(uas.compute(predictions=pred_head_f, references=head_gold_f)["accuracy"])
+        mask = (labels_head_t != IGNORE_INDEX)
 
-        # 정식 LAS: head와 관계 라벨이 모두 일치해야 정답으로 간주
-        both_correct = (pred_head == gold_head) & (rel_pred == gold_rel)
-        # 원소 수준 마스크를 적용하여 1차원으로 평탄화하고 지표를 계산합니다.
-        both_correct_f = both_correct[mask]
-        las_val = float(las.compute(predictions=both_correct_f, references=[True] * both_correct_f.shape[0])["accuracy"])
+        # UAS
+        uas_val = float(
+            uas.compute(
+                predictions=arc_pred[mask].cpu().numpy(),
+                references=labels_head_t[mask].cpu().numpy(),
+            )["accuracy"]
+        )
+
+        # LAS
+        both_correct = (arc_pred == labels_head_t) & (rel_pred == labels_deprel_t)
+        both_correct_masked = both_correct[mask].cpu().numpy()
+        las_val = float(
+            las.compute(
+                predictions=both_correct_masked,
+                references=np.ones_like(both_correct_masked, dtype=bool),
+            )["accuracy"]
+        )
         return {"uas": uas_val, "las": las_val}
 
     training_args = TrainingArguments(
@@ -428,10 +450,13 @@ def main() -> None:
         save_total_limit=2,
         learning_rate=3e-5,
         weight_decay=0.01,
-        per_device_train_batch_size=4,  # 메모리 절약을 위해 배치 크기 감소
-        per_device_eval_batch_size=4,
-        gradient_accumulation_steps=2,  # 메모리 절약을 위해 그래디언트 누적
+        per_device_train_batch_size=2,  # 메모리 절약을 위해 배치 크기 더 감소
+        per_device_eval_batch_size=2,
+        gradient_accumulation_steps=4,  # 메모리 절약을 위해 그래디언트 누적 증가
         fp16=True,  # 혼합 정밀도로 메모리 절약
+        dataloader_pin_memory=False,  # 메모리 절약
+        dataloader_num_workers=0,  # 메모리 절약
+        remove_unused_columns=True,  # 메모리 절약
         num_train_epochs=5,
         load_best_model_at_end=True,
         metric_for_best_model="las",
