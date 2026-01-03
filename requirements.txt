@@ -1,18 +1,27 @@
-# 핵심 라이브러리
-transformers==4.44.2
-datasets==2.21.0
-accelerate==1.0.1
-evaluate==0.4.2
+# KLUE 태스크 실행을 위한 최소 필수 패키지들
 
-# 토치 (CPU 기준; CUDA 환경에 맞게 별도 설치 권장)
-torch>=2.2.0
+# 핵심 ML/DL 프레임워크
+torch==2.1.2+cu118
+torchaudio==2.1.2+cu118
+torchvision==0.16.2+cu118
 
-# 메트릭
+# Hugging Face 생태계
+# transformers==4.57.0
+transformers==4.55.4
+# tokenizers==0.22.1
+tokenizers==0.21.4
+datasets==4.2.0
+huggingface-hub==0.35.3
+
+# 평가 지표
+evaluate==0.4.6
 seqeval==1.2.2
-scikit-learn==1.5.1
 
-# 기타
-numpy>=1.24.0
-pyyaml>=6.0.1
-tqdm>=4.66.0
+# 데이터 처리
+numpy==1.25.2
+pandas==2.3.2
 
+# 기타 필수 패키지
+tqdm==4.67.1
+filelock==3.13.1
+safetensors==0.6.2
